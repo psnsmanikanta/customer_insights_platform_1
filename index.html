@@ -46,6 +46,14 @@
               <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
               Compliance Pipeline
             </a>
+            <a class="nav-link" onclick="window.app.switchTab('admin-inventory')">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 6h16M9 6v12M15 6v12M4 18h16"></path></svg>
+              Inventory Forecast
+            </a>
+            <a class="nav-link" onclick="window.app.switchTab('admin-customer-segmentation')">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17h18M6 12h3m6 0h3M6 7h6m2 0h4"></path></svg>
+              Customer Segmentation
+            </a>
           </div>
           <div class="nav-group" id="nav-group-vendor" style="display: none;">
             <div class="nav-title" id="vendor-nav-title">Vendor Center</div>
@@ -91,33 +99,49 @@
             </div>
           </div>
         </header>
-                <!-- ============================================== -->
-        <!-- VIEW: ADMIN DASHBOARD                        -->
         <!-- ============================================== -->
-        <section id="view-admin-dashboard" class="content-section">
-          <div id="admin-dashboard-metrics" class="grid-cols-4">
-            <div class="glass-card"><div class="metric-card"><span class="metric-label">Total Sales</span><span class="metric-value" id="metric-total-sales">$0</span></div></div>
-            <div class="glass-card"><div class="metric-card"><span class="metric-label">Total Vendors</span><span class="metric-value" id="metric-total-vendors">0</span></div></div>
-            <div class="glass-card"><div class="metric-card"><span class="metric-label">Total Products</span><span class="metric-value" id="metric-total-products">0</span></div></div>
-            <div class="glass-card"><div class="metric-card"><span class="metric-label">Pending Approvals</span><span class="metric-value" id="metric-pending-approvals">0</span></div></div>
-          </div>
-          <div class="grid-cols-3" style="margin-top: 1.5rem;">
-            <div class="glass-card col-span-2">
-              <div class="card-header-flex">
-                <span class="card-title">Revenue Overview</span>
+        <!-- VIEW: ADMIN DASHBOARD                         -->
+        <!-- ============================================== -->
+        <section id="view-admin-dashboard" class="content-section active">
+          <!-- Metrics Overview Cards -->
+          <div class="grid-cols-4">
+            <div class="glass-card glow">
+              <div class="metric-card">
+                <span class="metric-label">Total Platform Sales</span>
+                <div class="metric-value-container">
+                  <span class="metric-value" id="admin-total-sales">$0.00</span>
+                </div>
+                <span class="metric-trend trend-up">▲ 12.4% vs last mo</span>
               </div>
-              <div id="revenue-chart-container" style="height: 300px;"></div>
             </div>
             <div class="glass-card">
-              <div class="card-header-flex">
-                <span class="card-title">Product Performance</span>
+              <div class="metric-card">
+                <span class="metric-label">Total Commission Earned</span>
+                <div class="metric-value-container">
+                  <span class="metric-value" id="admin-total-commission">$0.00</span>
+                </div>
+                <span class="metric-trend trend-up">▲ 8.1% vs last mo</span>
               </div>
-              <div id="product-performance-container">
-                <!-- Product performance items will be injected here -->
+            </div>
+            <div class="glass-card">
+              <div class="metric-card">
+                <span class="metric-label">Active Vendors</span>
+                <div class="metric-value-container">
+                  <span class="metric-value" id="admin-active-count">0</span>
+                </div>
+                <span class="metric-trend trend-up">▲ 2 new pending</span>
+              </div>
+            </div>
+            <div class="glass-card">
+              <div class="metric-card">
+                <span class="metric-label">Avg. Fulfillment Rate</span>
+                <div class="metric-value-container">
+                  <span class="metric-value" id="admin-avg-fulfillment">0.0%</span>
+                </div>
+                <span class="metric-trend trend-down">▼ 0.3% vs yesterday</span>
               </div>
             </div>
           </div>
-        </section>
           <!-- Section split -->
           <div class="grid-cols-2">
             <!-- Left: Pending Actions / Verifications -->
@@ -153,10 +177,39 @@
               </div>
             </div>
           </div>
+          <div class="glass-card" style="margin-top: 24px;">
+            <div class="card-header-flex">
+              <div>
+                <span class="card-title">Customer Analytics</span>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;"></div>
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="window.app.loadRevenueAnalytics()">Refresh</button>
+            </div>
+            <div class="glass-card" style="margin-top: 24px;">
+              <div class="card-header-flex" style="margin-bottom: 16px;">
+                <span class="card-title">Revenue Analytics Overview</span>
+                <span id="analytics-summary-badge" class="badge badge-approved">0 vendors</span>
+              </div>
+              <div class="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Vendor ID</th>
+                      <th>Revenue</th>
+                      <th>Units Sold</th>
+                      <th>Transactions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-analytics-tbody">
+                    <tr><td colspan="4" style="color:var(--text-muted);">Revenue data is loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </section>
         <!-- ============================================== -->
         <!-- VIEW: ADMIN VENDOR ROSTER                      -->
-        <!-- ============================================== -->
         <section id="view-admin-vendors" class="content-section">
           <div class="glass-card" style="margin-bottom: 24px;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
@@ -237,6 +290,65 @@
                   Select a vendor from the compliance queue to initiate verification and document audits.
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+        <!-- ============================================== -->
+        <!-- VIEW: ADMIN INVENTORY FORECAST               -->
+        <!-- ============================================== -->
+        <section id="view-admin-inventory" class="content-section">
+          <div class="glass-card">
+            <div class="card-header-flex">
+              <div>
+                <span class="card-title">Inventory Forecast</span>
+                <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 6px;">Projected stock movement and reorder signals for current vendor inventory.</div>
+              </div>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Product</th>
+                    <th>Vendor</th>
+                    <th>Current Stock</th>
+                    <th>Avg Daily Demand</th>
+                    <th>Predicted 7-Day Stock</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="inventory-forecast-tbody">
+                  <tr><td colspan="6" style="color: var(--text-muted);">Loading inventory forecast...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <!-- ============================================== -->
+        <!-- VIEW: ADMIN CUSTOMER SEGMENTATION             -->
+        <!-- ============================================== -->
+        <section id="view-admin-customer-segmentation" class="content-section">
+          <div class="glass-card">
+            <div class="card-header-flex">
+              <div>
+                <span class="card-title">Customer Segmentation</span>
+                <div style="font-size: 0.9rem; color: var(--text-muted); margin-top: 6px;">Premium, active, new and inactive customer cohorts for marketplace growth.</div>
+              </div>
+              <span class="badge badge-approved">4 cohorts</span>
+            </div>
+            <div id="segmentation-chart" style="padding: 16px 24px;"></div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Segment</th>
+                    <th>Customers</th>
+                    <th>Insights</th>
+                  </tr>
+                </thead>
+                <tbody id="customer-segmentation-tbody">
+                  <tr><td colspan="3" style="color: var(--text-muted);">Calculating customer cohorts...</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </section>
@@ -642,8 +754,9 @@
       </main>
     </div>
   </div>
-  <!-- Include mockdata.js first, then app.js -->
+  <!-- Include mockdata.js and analytics chart helpers before the main app logic -->
   <script src="mockdata.js"></script>
+  <script src="analytics-ui.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

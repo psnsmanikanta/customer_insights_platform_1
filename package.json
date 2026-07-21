@@ -4,7 +4,8 @@
   "description": "ShopSense marketplace module workspace",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "dependencies": {}
 }

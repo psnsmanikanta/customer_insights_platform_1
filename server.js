@@ -11,7 +11,8 @@ vm.createContext(dataContext);
 vm.runInContext(
   `${fs.readFileSync(path.join(__dirname, "mockdata.js"), "utf8")}
    this.INITIAL_VENDORS = INITIAL_VENDORS;
-   this.INITIAL_PRODUCTS = INITIAL_PRODUCTS;`,
+   this.INITIAL_PRODUCTS = INITIAL_PRODUCTS;
+   this.INITIAL_TRANSACTIONS = INITIAL_TRANSACTIONS;`,
   dataContext
 );
 
@@ -21,6 +22,20 @@ let vendors = dataContext.INITIAL_VENDORS.map((vendor) => ({
   status: vendor.operationalStatus === "active" ? "active" : vendor.operationalStatus === "suspended" ? "suspended" : "pending",
   createdAt: vendor.createdDate
 }));
+
+const transactions = Array.isArray(dataContext.INITIAL_TRANSACTIONS) ? dataContext.INITIAL_TRANSACTIONS : [];
+
+function aggregateRevenueAnalytics() {
+  return vendors.map((vendor) => {
+    const vendorTransactions = transactions.filter((txn) => txn.vendorId === vendor.id);
+    return {
+      vendorId: vendor.id,
+      totalRevenue: vendorTransactions.reduce((sum, txn) => sum + Number(txn.totalAmount || 0), 0),
+      totalUnitsSold: vendorTransactions.reduce((sum, txn) => sum + Number(txn.quantity || 0), 0),
+      transactionCount: vendorTransactions.length
+    };
+  });
+}
 
 function sendJson(response, status, payload) {
   response.writeHead(status, {
@@ -160,6 +175,10 @@ async function handleApi(request, response, url) {
         .filter((vendor) => !status || status === "all" || getStatus(vendor) === status)
         .map(toRecord);
       return sendJson(response, 200, records);
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/analytics/revenue") {
+      return sendJson(response, 200, aggregateRevenueAnalytics());
     }
 
     if (request.method === "GET" && vendorMatch) {
