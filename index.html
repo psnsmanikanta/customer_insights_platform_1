@@ -91,49 +91,33 @@
             </div>
           </div>
         </header>
+                <!-- ============================================== -->
+        <!-- VIEW: ADMIN DASHBOARD                        -->
         <!-- ============================================== -->
-        <!-- VIEW: ADMIN DASHBOARD                         -->
-        <!-- ============================================== -->
-        <section id="view-admin-dashboard" class="content-section active">
-          <!-- Metrics Overview Cards -->
-          <div class="grid-cols-4">
-            <div class="glass-card glow">
-              <div class="metric-card">
-                <span class="metric-label">Total Platform Sales</span>
-                <div class="metric-value-container">
-                  <span class="metric-value" id="admin-total-sales">$0.00</span>
-                </div>
-                <span class="metric-trend trend-up">▲ 12.4% vs last mo</span>
+        <section id="view-admin-dashboard" class="content-section">
+          <div id="admin-dashboard-metrics" class="grid-cols-4">
+            <div class="glass-card"><div class="metric-card"><span class="metric-label">Total Sales</span><span class="metric-value" id="metric-total-sales">$0</span></div></div>
+            <div class="glass-card"><div class="metric-card"><span class="metric-label">Total Vendors</span><span class="metric-value" id="metric-total-vendors">0</span></div></div>
+            <div class="glass-card"><div class="metric-card"><span class="metric-label">Total Products</span><span class="metric-value" id="metric-total-products">0</span></div></div>
+            <div class="glass-card"><div class="metric-card"><span class="metric-label">Pending Approvals</span><span class="metric-value" id="metric-pending-approvals">0</span></div></div>
+          </div>
+          <div class="grid-cols-3" style="margin-top: 1.5rem;">
+            <div class="glass-card col-span-2">
+              <div class="card-header-flex">
+                <span class="card-title">Revenue Overview</span>
               </div>
+              <div id="revenue-chart-container" style="height: 300px;"></div>
             </div>
             <div class="glass-card">
-              <div class="metric-card">
-                <span class="metric-label">Total Commission Earned</span>
-                <div class="metric-value-container">
-                  <span class="metric-value" id="admin-total-commission">$0.00</span>
-                </div>
-                <span class="metric-trend trend-up">▲ 8.1% vs last mo</span>
+              <div class="card-header-flex">
+                <span class="card-title">Product Performance</span>
               </div>
-            </div>
-            <div class="glass-card">
-              <div class="metric-card">
-                <span class="metric-label">Active Vendors</span>
-                <div class="metric-value-container">
-                  <span class="metric-value" id="admin-active-count">0</span>
-                </div>
-                <span class="metric-trend trend-up">▲ 2 new pending</span>
-              </div>
-            </div>
-            <div class="glass-card">
-              <div class="metric-card">
-                <span class="metric-label">Avg. Fulfillment Rate</span>
-                <div class="metric-value-container">
-                  <span class="metric-value" id="admin-avg-fulfillment">0.0%</span>
-                </div>
-                <span class="metric-trend trend-down">▼ 0.3% vs yesterday</span>
+              <div id="product-performance-container">
+                <!-- Product performance items will be injected here -->
               </div>
             </div>
           </div>
+        </section>
           <!-- Section split -->
           <div class="grid-cols-2">
             <!-- Left: Pending Actions / Verifications -->
