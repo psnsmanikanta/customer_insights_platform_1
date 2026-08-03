@@ -55,3 +55,20 @@ test('GET /api/customers and /api/transactions return marketplace data', async (
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
   }
 });
+
+test('GET /api/analytics/customer-behavior returns metrics and recommendations from stored data', async () => {
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+
+  try {
+    const response = await requestJson(`http://127.0.0.1:${port}/api/analytics/customer-behavior`);
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.metrics.totalCustomers, 8);
+    assert.ok(Array.isArray(response.body.segments));
+    assert.ok(response.body.recommendations.length > 0);
+    assert.ok(response.body.recommendations[0].productName);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});

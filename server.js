@@ -12,7 +12,8 @@ vm.runInContext(
   `${fs.readFileSync(path.join(__dirname, "mockdata.js"), "utf8")}
    this.INITIAL_VENDORS = INITIAL_VENDORS;
    this.INITIAL_PRODUCTS = INITIAL_PRODUCTS;
-   this.INITIAL_TRANSACTIONS = INITIAL_TRANSACTIONS;`,
+   this.INITIAL_TRANSACTIONS = INITIAL_TRANSACTIONS;
+   this.INITIAL_CUSTOMERS = typeof INITIAL_CUSTOMERS !== 'undefined' ? INITIAL_CUSTOMERS : [];`,
   dataContext
 );
 
@@ -24,6 +25,9 @@ let vendors = dataContext.INITIAL_VENDORS.map((vendor) => ({
 }));
 
 const transactions = Array.isArray(dataContext.INITIAL_TRANSACTIONS) ? dataContext.INITIAL_TRANSACTIONS : [];
+const customers = Array.isArray(dataContext.INITIAL_CUSTOMERS) ? dataContext.INITIAL_CUSTOMERS : [];
+const products = Array.isArray(dataContext.INITIAL_PRODUCTS) ? dataContext.INITIAL_PRODUCTS : [];
+
 
 function aggregateRevenueAnalytics() {
   return vendors.map((vendor) => {
@@ -35,6 +39,81 @@ function aggregateRevenueAnalytics() {
       transactionCount: vendorTransactions.length
     };
   });
+}
+
+function buildCustomerBehaviorAnalytics() {
+  const now = new Date();
+  const day = 86400000;
+  const totalOrders = customers.reduce((sum, customer) => sum + Number(customer.orderCount || 0), 0);
+  const totalLifetimeValue = customers.reduce((sum, customer) => sum + Number(customer.lifetimeValue || 0), 0);
+  const repeatCustomers = customers.filter((customer) => Number(customer.orderCount || 0) > 1);
+  const atRiskCustomers = customers.filter((customer) => (now - new Date(customer.lastPurchaseDate)) / day > 30);
+  const segmentCounts = { Champions: 0, Loyal: 0, New: 0, "At risk": 0 };
+
+  const customerRows = customers.map((customer) => {
+    const daysSinceLastPurchase = Math.max(0, Math.floor((now - new Date(customer.lastPurchaseDate)) / day));
+    const daysSinceFirstPurchase = Math.max(0, Math.floor((now - new Date(customer.firstPurchaseDate)) / day));
+    let segment = "At risk";
+    if (Number(customer.lifetimeValue || 0) >= 1000 || Number(customer.orderCount || 0) >= 10) segment = "Champions";
+    else if (daysSinceFirstPurchase <= 30) segment = "New";
+    else if (daysSinceLastPurchase <= 30) segment = "Loyal";
+    segmentCounts[segment] += 1;
+    return {
+      id: customer.id,
+      name: customer.name,
+      lifetimeValue: Number(customer.lifetimeValue || 0),
+      orderCount: Number(customer.orderCount || 0),
+      daysSinceLastPurchase,
+      segment
+    };
+  });
+
+  const salesByProduct = transactions.reduce((totals, transaction) => {
+    totals[transaction.productId] = (totals[transaction.productId] || 0) + Number(transaction.quantity || 0);
+    return totals;
+  }, {});
+  const popularProducts = products
+    .filter((product) => product.status === "active" && Number(product.stock || 0) > 0)
+    .map((product) => ({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: Number(product.price || 0),
+      unitsSold: salesByProduct[product.id] || 0,
+      stock: Number(product.stock || 0)
+    }))
+    .sort((left, right) => right.unitsSold - left.unitsSold || right.stock - left.stock)
+    .slice(0, 5);
+
+  const recommendations = customerRows
+    .sort((left, right) => right.lifetimeValue - left.lifetimeValue)
+    .slice(0, 5)
+    .map((customer, index) => {
+      const product = popularProducts[index % Math.max(popularProducts.length, 1)];
+      return {
+        customerId: customer.id,
+        customerName: customer.name,
+        segment: customer.segment,
+        productName: product?.name || "No in-stock products",
+        category: product?.category || "",
+        reason: customer.segment === "At risk"
+          ? "Win-back offer based on marketplace best sellers."
+          : "Suggested from the most purchased in-stock marketplace products."
+      };
+    });
+
+  return {
+    metrics: {
+      totalCustomers: customers.length,
+      repeatPurchaseRate: customers.length ? Math.round((repeatCustomers.length / customers.length) * 100) : 0,
+      averageOrderValue: totalOrders ? totalLifetimeValue / totalOrders : 0,
+      atRiskCustomers: atRiskCustomers.length
+    },
+    segments: Object.entries(segmentCounts).map(([label, count]) => ({ label, count })),
+    popularProducts,
+    recommendations,
+    customers: customerRows.sort((left, right) => right.lifetimeValue - left.lifetimeValue)
+  };
 }
 
 function sendJson(response, status, payload) {
@@ -181,6 +260,19 @@ async function handleApi(request, response, url) {
       return sendJson(response, 200, aggregateRevenueAnalytics());
     }
 
+    if (request.method === "GET" && url.pathname === "/api/analytics/customer-behavior") {
+      return sendJson(response, 200, buildCustomerBehaviorAnalytics());
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/customers") {
+      return sendJson(response, 200, customers);
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/transactions") {
+      return sendJson(response, 200, transactions);
+    }
+
+
     if (request.method === "GET" && vendorMatch) {
       const vendor = findVendor(vendorMatch[1]);
       return vendor ? sendJson(response, 200, toRecord(vendor)) : sendJson(response, 404, { error: "Vendor not found" });
@@ -245,15 +337,22 @@ async function handleApi(request, response, url) {
   }
 }
 
-const server = http.createServer((request, response) => {
-  const url = new URL(request.url, `http://${request.headers.host}`);
-  if (url.pathname.startsWith("/api/")) {
-    handleApi(request, response, url);
-    return;
-  }
-  serveStatic(request, response, decodeURIComponent(url.pathname));
-});
+function createServer() {
+  return http.createServer((request, response) => {
+    const url = new URL(request.url, `http://${request.headers.host}`);
+    if (url.pathname.startsWith("/api/")) {
+      handleApi(request, response, url);
+      return;
+    }
+    serveStatic(request, response, decodeURIComponent(url.pathname));
+  });
+}
 
-server.listen(PORT, () => {
-  console.log(`ShopSense Module 1 running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  const server = createServer();
+  server.listen(PORT, () => {
+    console.log(`ShopSense Module 1 running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = { createServer };

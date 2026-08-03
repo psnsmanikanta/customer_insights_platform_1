@@ -25,6 +25,8 @@ const ROUTE_TITLES = {
   "admin-compliance": "Compliance Pipeline",
   "admin-inventory": "Inventory Forecast",
   "admin-customer-segmentation": "Customer Segmentation",
+  "admin-customer-behavior": "Customer Behaviour & Recommendations",
+  "admin-sales-revenue-intelligence": "Sales & Revenue Intelligence",
   "vendor-onboarding": "Vendor Registration",
   "vendor-dashboard": "Vendor Dashboard",
   "vendor-catalog": "Product Catalog",
@@ -107,21 +109,12 @@ const state = {
   selectedEndpoint: API_ENDPOINTS[0],
   selectedComplianceVendorId: null,
   analytics: [],
+  customerBehaviorAnalytics: null,
   customers: [],
   transactions: [],
   selectedCustomerId: null
 };
 
-const INITIAL_CUSTOMERS = [
-  { id: "CUST-001", name: "Maya Kaur", firstPurchaseDate: "2026-03-22T11:30:00Z", lastPurchaseDate: "2026-07-15T15:45:00Z", lifetimeValue: 3120, orderCount: 14 },
-  { id: "CUST-002", name: "Noah Patel", firstPurchaseDate: "2026-07-05T09:10:00Z", lastPurchaseDate: "2026-07-05T09:10:00Z", lifetimeValue: 89, orderCount: 1 },
-  { id: "CUST-003", name: "Priya Jain", firstPurchaseDate: "2025-11-18T13:25:00Z", lastPurchaseDate: "2026-07-12T18:20:00Z", lifetimeValue: 670, orderCount: 8 },
-  { id: "CUST-004", name: "Arjun Mehta", firstPurchaseDate: "2026-07-12T17:40:00Z", lastPurchaseDate: "2026-07-12T17:40:00Z", lifetimeValue: 54, orderCount: 1 },
-  { id: "CUST-005", name: "Sara Mukherjee", firstPurchaseDate: "2026-02-14T14:00:00Z", lastPurchaseDate: "2026-06-28T10:35:00Z", lifetimeValue: 1420, orderCount: 11 },
-  { id: "CUST-006", name: "Karan Verma", firstPurchaseDate: "2026-04-08T08:20:00Z", lastPurchaseDate: "2026-07-18T12:30:00Z", lifetimeValue: 820, orderCount: 6 },
-  { id: "CUST-007", name: "Aisha Khan", firstPurchaseDate: "2025-12-05T12:50:00Z", lastPurchaseDate: "2026-02-25T14:15:00Z", lifetimeValue: 190, orderCount: 3 },
-  { id: "CUST-008", name: "Riya Sharma", firstPurchaseDate: "2026-07-16T10:50:00Z", lastPurchaseDate: "2026-07-16T10:50:00Z", lifetimeValue: 38, orderCount: 1 }
-];
 
 const storage = {
   load(key, fallback) {
@@ -368,6 +361,7 @@ function renderAll() {
   renderVendorTable();
   renderComplianceQueue();
   renderRevenueAnalytics();
+  renderSalesRevenueIntelligence();
   renderVendorViews();
   renderEndpoints();
   updateRoleChrome();
@@ -526,6 +520,70 @@ function generateCustomerSegmentInsights() {
     { label: "New Customers", count: counts.new, note: "Joined or placed first order in the last 30 days." },
     { label: "Inactive Customers", count: counts.inactive, note: "No purchase activity in the last 30+ days." }
   ];
+}
+
+function buildCustomerBehaviorAnalyticsFromState() {
+  const now = new Date();
+  const day = 86400000;
+  const totalOrders = state.customers.reduce((sum, customer) => sum + Number(customer.orderCount || 0), 0);
+  const totalLifetimeValue = state.customers.reduce((sum, customer) => sum + Number(customer.lifetimeValue || 0), 0);
+  const segmentCounts = { Champions: 0, Loyal: 0, New: 0, "At risk": 0 };
+  const customerRows = state.customers.map((customer) => {
+    const daysSinceLastPurchase = Math.max(0, Math.floor((now - new Date(customer.lastPurchaseDate)) / day));
+    const daysSinceFirstPurchase = Math.max(0, Math.floor((now - new Date(customer.firstPurchaseDate)) / day));
+    let segment = "At risk";
+    if (Number(customer.lifetimeValue || 0) >= 1000 || Number(customer.orderCount || 0) >= 10) segment = "Champions";
+    else if (daysSinceFirstPurchase <= 30) segment = "New";
+    else if (daysSinceLastPurchase <= 30) segment = "Loyal";
+    segmentCounts[segment] += 1;
+    return { id: customer.id, name: customer.name, lifetimeValue: Number(customer.lifetimeValue || 0), orderCount: Number(customer.orderCount || 0), daysSinceLastPurchase, segment };
+  });
+  const salesByProduct = state.transactions.reduce((totals, transaction) => {
+    totals[transaction.productId] = (totals[transaction.productId] || 0) + Number(transaction.quantity || 0);
+    return totals;
+  }, {});
+  const popularProducts = state.products
+    .filter((product) => product.status === "active" && Number(product.stock || 0) > 0)
+    .map((product) => ({ id: product.id, name: product.name, category: product.category, price: Number(product.price || 0), unitsSold: salesByProduct[product.id] || 0, stock: Number(product.stock || 0) }))
+    .sort((left, right) => right.unitsSold - left.unitsSold || right.stock - left.stock)
+    .slice(0, 5);
+  return {
+    metrics: {
+      totalCustomers: state.customers.length,
+      repeatPurchaseRate: state.customers.length ? Math.round((state.customers.filter((customer) => Number(customer.orderCount || 0) > 1).length / state.customers.length) * 100) : 0,
+      averageOrderValue: totalOrders ? totalLifetimeValue / totalOrders : 0,
+      atRiskCustomers: customerRows.filter((customer) => customer.daysSinceLastPurchase > 30).length
+    },
+    segments: Object.entries(segmentCounts).map(([label, count]) => ({ label, count })),
+    popularProducts,
+    recommendations: customerRows.sort((left, right) => right.lifetimeValue - left.lifetimeValue).slice(0, 5).map((customer, index) => {
+      const product = popularProducts[index % Math.max(popularProducts.length, 1)];
+      return { customerId: customer.id, customerName: customer.name, segment: customer.segment, productName: product?.name || "No in-stock products", category: product?.category || "", reason: customer.segment === "At risk" ? "Win-back offer based on marketplace best sellers." : "Suggested from the most purchased in-stock marketplace products." };
+    }),
+    customers: customerRows.sort((left, right) => right.lifetimeValue - left.lifetimeValue)
+  };
+}
+
+function renderCustomerBehaviorDashboard() {
+  const dashboard = state.customerBehaviorAnalytics || buildCustomerBehaviorAnalyticsFromState();
+  const metrics = dashboard.metrics;
+  byId("cb-total-customers").textContent = metrics.totalCustomers;
+  byId("cb-repeat-rate").textContent = `${metrics.repeatPurchaseRate}%`;
+  byId("cb-average-order-value").textContent = currency.format(metrics.averageOrderValue);
+  byId("cb-at-risk").textContent = metrics.atRiskCustomers;
+
+  const segmentList = byId("cb-segment-list");
+  if (segmentList) segmentList.innerHTML = dashboard.segments.map((segment) => `
+    <div class="behavior-bar-row"><span>${escapeHtml(segment.label)}</span><div class="behavior-bar-track"><div class="behavior-bar-fill" style="width:${metrics.totalCustomers ? (segment.count / metrics.totalCustomers) * 100 : 0}%"></div></div><strong>${segment.count}</strong></div>
+  `).join("");
+  const productList = byId("cb-product-list");
+  if (productList) productList.innerHTML = dashboard.popularProducts.map((product) => `
+    <div class="behavior-list-item"><div><strong>${escapeHtml(product.name)}</strong><small>${escapeHtml(product.category)} · ${product.unitsSold} units sold</small></div><span>${currency.format(product.price)}</span></div>
+  `).join("") || `<p class="behavior-empty">No in-stock product signals are available.</p>`;
+  const recommendationRows = byId("cb-recommendation-tbody");
+  if (recommendationRows) recommendationRows.innerHTML = dashboard.recommendations.map((recommendation) => `
+    <tr><td><strong>${escapeHtml(recommendation.customerName)}</strong><br><span class="table-secondary">${escapeHtml(recommendation.customerId)}</span></td><td>${escapeHtml(recommendation.segment)}</td><td>${escapeHtml(recommendation.productName)}<br><span class="table-secondary">${escapeHtml(recommendation.category)}</span></td><td>${escapeHtml(recommendation.reason)}</td></tr>
+  `).join("") || `<tr><td colspan="4" class="behavior-empty">No recommendations available yet.</td></tr>`;
 }
 
 function generateRecommendations() {
@@ -741,9 +799,36 @@ async function loadRevenueAnalytics() {
     console.warn("Unable to load revenue analytics from API", error);
     state.analytics = computeRevenueAnalyticsFromState();
   }
+
+  try {
+    const resCust = await fetch("/api/customers");
+    if (resCust.ok) state.customers = await resCust.json();
+  } catch (e) {
+    console.warn("Unable to load customers from API", e);
+  }
+
+  try {
+    const resTxn = await fetch("/api/transactions");
+    if (resTxn.ok) state.transactions = await resTxn.json();
+  } catch (e) {
+    console.warn("Unable to load transactions from API", e);
+  }
+
+  try {
+    const response = await fetch("/api/analytics/customer-behavior");
+    if (!response.ok) throw new Error("Customer behaviour request failed");
+    state.customerBehaviorAnalytics = await response.json();
+  } catch (error) {
+    console.warn("Unable to load customer behaviour analytics from API", error);
+    state.customerBehaviorAnalytics = buildCustomerBehaviorAnalyticsFromState();
+  }
+
   renderRevenueAnalytics();
+  renderCustomerBehaviorDashboard();
+  renderSalesRevenueIntelligence();
   window.analyticsUI?.renderAnalyticsCharts();
 }
+
 
 function renderEndpoints() {
   const container = byId("api-endpoints-container");
@@ -793,6 +878,10 @@ function switchTab(tab) {
     renderCustomerSegmentation();
     window.analyticsUI?.renderAnalyticsCharts();
   }
+  if (tab === "admin-customer-behavior") renderCustomerBehaviorDashboard();
+  if (tab === "admin-sales-revenue-intelligence") {
+    renderSalesRevenueIntelligence();
+  }
 }
 
 function handleRoleChange(value) {
@@ -813,6 +902,39 @@ function handleRoleChange(value) {
     switchTab("vendor-dashboard");
   }
   renderAll();
+}
+
+function enterPortal() {
+  byId("login-screen").hidden = true;
+  byId("app-shell").hidden = false;
+  byId("app-shell").style.display = "flex";
+}
+
+function enterAdminPortal() {
+  state.currentRole = "admin";
+  state.currentVendorId = null;
+  enterPortal();
+  byId("role-selector").value = "admin";
+  renderAll();
+  switchTab("admin-dashboard");
+}
+
+function enterVendorPortal() {
+  const vendor = state.vendors.find((item) => getVendorStatus(item) === "active") || state.vendors[0];
+  if (!vendor) {
+    showToast("No vendor accounts are available.", "error");
+    return;
+  }
+  state.currentRole = vendor.id;
+  state.currentVendorId = vendor.id;
+  enterPortal();
+  byId("role-selector").value = vendor.id;
+  renderAll();
+  switchTab("vendor-dashboard");
+}
+
+function enterCustomerPortal() {
+  showToast("Customer login is not available in this marketplace management portal yet.", "info");
 }
 
 function goToStep(step) {
@@ -929,12 +1051,15 @@ function init() {
 
   renderAll();
   loadRevenueAnalytics();
-  switchTab("admin-dashboard");
 }
 
 window.app = {
   switchTab,
   handleRoleChange,
+  enterAdminPortal,
+  enterVendorPortal,
+  enterCustomerPortal,
+  loadRevenueAnalytics,
   filterVendorsList: renderVendorTable,
   resetDatabase() {
     localStorage.removeItem(STORE_KEYS.vendors);
@@ -1104,7 +1229,230 @@ window.app = {
       byId("api-response-content").textContent = JSON.stringify({ ok: false, error: error.message || "Invalid request" }, null, 2);
     }
     byId("response-latency-label").textContent = `Latency: ${Math.round(performance.now() - started)} ms`;
+  },
+  filterSriLedger() {
+    filterSriLedger();
   }
 };
+
+function renderSalesRevenueIntelligence() {
+  const totalSalesEl = byId("sri-total-sales");
+  if (!totalSalesEl) return;
+
+  const totalSales = state.transactions.reduce((sum, txn) => sum + Number(txn.totalAmount || 0), 0);
+  const totalCommissions = state.transactions.reduce((sum, txn) => {
+    const vendor = state.vendors.find(v => v.id === txn.vendorId);
+    const rate = vendor ? getCommissionValue(vendor) : 10;
+    return sum + (Number(txn.totalAmount || 0) * rate) / 100;
+  }, 0);
+  const totalTxns = state.transactions.length;
+  const aov = totalTxns > 0 ? totalSales / totalTxns : 0;
+
+  totalSalesEl.textContent = currency.format(totalSales);
+  byId("sri-total-commissions").textContent = currency.format(totalCommissions);
+  byId("sri-avg-order-value").textContent = currency.format(aov);
+  byId("sri-total-transactions").textContent = totalTxns;
+
+  populateSriFilters();
+  renderSriCharts();
+  filterSriLedger();
+}
+
+function populateSriFilters() {
+  const vendorSelect = byId("sri-filter-vendor");
+  const categorySelect = byId("sri-filter-category");
+  if (!vendorSelect || !categorySelect) return;
+
+  const currentVendor = vendorSelect.value;
+  const currentCategory = categorySelect.value;
+
+  const vendorIds = [...new Set(state.transactions.map(t => t.vendorId))];
+  const vendorOptions = ['<option value="all">All Vendors</option>'];
+  vendorIds.forEach(id => {
+    const vendor = state.vendors.find(v => v.id === id);
+    const name = vendor ? vendor.businessName : id;
+    vendorOptions.push(`<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`);
+  });
+  vendorSelect.innerHTML = vendorOptions.join('');
+  if (currentVendor && vendorIds.includes(currentVendor)) {
+    vendorSelect.value = currentVendor;
+  } else {
+    vendorSelect.value = 'all';
+  }
+
+  const categories = [...new Set(state.products.map(p => p.category))];
+  const categoryOptions = ['<option value="all">All Categories</option>'];
+  categories.forEach(cat => {
+    categoryOptions.push(`<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`);
+  });
+  categorySelect.innerHTML = categoryOptions.join('');
+  if (currentCategory && categories.includes(currentCategory)) {
+    categorySelect.value = currentCategory;
+  } else {
+    categorySelect.value = 'all';
+  }
+}
+
+function renderSriCharts() {
+  const vendorChartContainer = byId("sri-chart-vendor-revenue");
+  const categoryChartContainer = byId("sri-chart-category-sales");
+  if (!vendorChartContainer || !categoryChartContainer) return;
+
+  const vendorRevenueMap = {};
+  state.transactions.forEach(txn => {
+    const vendor = state.vendors.find(v => v.id === txn.vendorId);
+    const name = vendor ? vendor.businessName : txn.vendorId;
+    vendorRevenueMap[name] = (vendorRevenueMap[name] || 0) + Number(txn.totalAmount || 0);
+  });
+  const vendorData = Object.entries(vendorRevenueMap)
+    .map(([name, revenue]) => ({ name, revenue }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+
+  const categorySalesMap = {};
+  state.transactions.forEach(txn => {
+    const product = state.products.find(p => p.id === txn.productId);
+    const category = product ? product.category : "General";
+    if (!categorySalesMap[category]) {
+      categorySalesMap[category] = { category, count: 0, total: 0 };
+    }
+    categorySalesMap[category].count += txn.quantity || 1;
+    categorySalesMap[category].total += Number(txn.totalAmount || 0);
+  });
+  const categoryData = Object.values(categorySalesMap)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  if (vendorData.length > 0) {
+    vendorChartContainer.innerHTML = generateVendorRevenueSvg(vendorData);
+  } else {
+    vendorChartContainer.innerHTML = `<span style="color:var(--text-muted);">No sales data available</span>`;
+  }
+
+  if (categoryData.length > 0) {
+    categoryChartContainer.innerHTML = generateCategorySalesSvg(categoryData);
+  } else {
+    categoryChartContainer.innerHTML = `<span style="color:var(--text-muted);">No category data available</span>`;
+  }
+}
+
+function generateVendorRevenueSvg(vendorData) {
+  const width = 450;
+  const height = 140;
+  const padding = { top: 10, right: 30, bottom: 10, left: 120 };
+  const maxRevenue = Math.max(...vendorData.map(d => d.revenue), 1);
+
+  const bars = vendorData.map((d, i) => {
+    const barHeight = 14;
+    const barGap = 10;
+    const y = padding.top + i * (barHeight + barGap);
+    const availableWidth = width - padding.left - padding.right;
+    const barWidth = (d.revenue / maxRevenue) * availableWidth;
+
+    return `
+      <g class="bar-group">
+        <text x="${padding.left - 10}" y="${y + 10}" text-anchor="end" font-size="10" fill="var(--text-muted)" font-weight="500">${escapeHtml(d.name)}</text>
+        <rect x="${padding.left}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="url(#primaryGrad)" filter="drop-shadow(0px 2px 4px rgba(99, 102, 241, 0.2))"></rect>
+        <text x="${padding.left + barWidth + 8}" y="${y + 10}" font-size="10" fill="var(--text-main)" font-weight="600">${currency.format(d.revenue)}</text>
+      </g>
+    `;
+  }).join('');
+
+  return `
+    <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="display:block;">
+      <defs>
+        <linearGradient id="primaryGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#6366f1" />
+          <stop offset="100%" stop-color="#a855f7" />
+        </linearGradient>
+      </defs>
+      ${bars}
+    </svg>
+  `;
+}
+
+function generateCategorySalesSvg(categoryData) {
+  const width = 450;
+  const height = 140;
+  const padding = { top: 10, right: 30, bottom: 10, left: 100 };
+  const maxCount = Math.max(...categoryData.map(d => d.total), 1);
+
+  const bars = categoryData.map((d, i) => {
+    const barHeight = 14;
+    const barGap = 10;
+    const y = padding.top + i * (barHeight + barGap);
+    const availableWidth = width - padding.left - padding.right;
+    const barWidth = (d.total / maxCount) * availableWidth;
+
+    return `
+      <g class="bar-group">
+        <text x="${padding.left - 10}" y="${y + 10}" text-anchor="end" font-size="10" fill="var(--text-muted)" font-weight="500">${escapeHtml(d.category)}</text>
+        <rect x="${padding.left}" y="${y}" width="${barWidth}" height="${barHeight}" rx="4" fill="url(#secondaryGrad)" filter="drop-shadow(0px 2px 4px rgba(14, 165, 233, 0.2))"></rect>
+        <text x="${padding.left + barWidth + 8}" y="${y + 10}" font-size="10" fill="var(--text-main)" font-weight="600">${currency.format(d.total)} (${d.count} sales)</text>
+      </g>
+    `;
+  }).join('');
+
+  return `
+    <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" style="display:block;">
+      <defs>
+        <linearGradient id="secondaryGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stop-color="#0ea5e9" />
+          <stop offset="100%" stop-color="#10b981" />
+        </linearGradient>
+      </defs>
+      ${bars}
+    </svg>
+  `;
+}
+
+
+function filterSriLedger() {
+  const tbody = byId("sri-ledger-tbody");
+  if (!tbody) return;
+
+  const searchQuery = byId("sri-filter-search")?.value?.toLowerCase() || '';
+  const vendorFilter = byId("sri-filter-vendor")?.value || 'all';
+  const categoryFilter = byId("sri-filter-category")?.value || 'all';
+
+  const filteredTxns = state.transactions.filter(txn => {
+    const vendor = state.vendors.find(v => v.id === txn.vendorId);
+    const product = state.products.find(p => p.id === txn.productId);
+    
+    const vendorName = vendor ? vendor.businessName : '';
+    const productName = product ? product.name : '';
+    const category = product ? product.category : '';
+
+    const matchesSearch = 
+      txn.transactionId.toLowerCase().includes(searchQuery) ||
+      productName.toLowerCase().includes(searchQuery) ||
+      category.toLowerCase().includes(searchQuery);
+
+    const matchesVendor = vendorFilter === 'all' || txn.vendorId === vendorFilter;
+    const matchesCategory = categoryFilter === 'all' || category === categoryFilter;
+
+    return matchesSearch && matchesVendor && matchesCategory;
+  });
+
+  tbody.innerHTML = filteredTxns.map(txn => {
+    const vendor = state.vendors.find(v => v.id === txn.vendorId);
+    const product = state.products.find(p => p.id === txn.productId);
+    const rate = vendor ? getCommissionValue(vendor) : 10;
+    const comm = (Number(txn.totalAmount || 0) * rate) / 100;
+
+    return `
+      <tr>
+        <td style="font-size:0.8rem; color:var(--text-muted);">${formatDate(txn.date)}</td>
+        <td><strong>${escapeHtml(txn.transactionId)}</strong></td>
+        <td>${escapeHtml(vendor ? vendor.businessName : txn.vendorId)}</td>
+        <td>${escapeHtml(product ? product.name : txn.productId)}</td>
+        <td><span class="badge" style="background: rgba(255,255,255,0.05); color:var(--text-main); font-size:0.75rem;">${escapeHtml(product ? product.category : 'General')}</span></td>
+        <td>${txn.quantity}</td>
+        <td><strong>${currency.format(txn.totalAmount)}</strong></td>
+        <td style="color:#a855f7;">${currency.format(comm)} <span style="font-size:0.7rem; opacity:0.6;">(${rate}%)</span></td>
+      </tr>
+    `;
+  }).join('') || `<tr><td colspan="8" style="color:var(--text-muted); text-align:center;">No matching transactions found.</td></tr>`;
+}
 
 document.addEventListener("DOMContentLoaded", init);

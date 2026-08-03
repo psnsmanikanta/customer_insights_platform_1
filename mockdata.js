@@ -263,3 +263,14 @@ const INITIAL_TRANSACTIONS = [
   { transactionId: "TRN-006", vendorId: "VND-8843", productId: "PROD-601", quantity: 2, totalAmount: 79.98, date: "2026-07-13T10:15:00Z" },
   { transactionId: "TRN-007", vendorId: "VND-5517", productId: "PROD-701", quantity: 1, totalAmount: 24.99, date: "2026-07-13T14:45:00Z" }
 ];
+
+const INITIAL_CUSTOMERS = [
+  { id: "CUST-001", name: "Maya Kaur", firstPurchaseDate: "2026-03-22T11:30:00Z", lastPurchaseDate: "2026-07-15T15:45:00Z", lifetimeValue: 3120, orderCount: 14 },
+  { id: "CUST-002", name: "Noah Patel", firstPurchaseDate: "2026-07-05T09:10:00Z", lastPurchaseDate: "2026-07-05T09:10:00Z", lifetimeValue: 89, orderCount: 1 },
+  { id: "CUST-003", name: "Priya Jain", firstPurchaseDate: "2025-11-18T13:25:00Z", lastPurchaseDate: "2026-07-12T18:20:00Z", lifetimeValue: 670, orderCount: 8 },
+  { id: "CUST-004", name: "Arjun Mehta", firstPurchaseDate: "2026-07-12T17:40:00Z", lastPurchaseDate: "2026-07-12T17:40:00Z", lifetimeValue: 54, orderCount: 1 },
+  { id: "CUST-005", name: "Sara Mukherjee", firstPurchaseDate: "2026-02-14T14:00:00Z", lastPurchaseDate: "2026-06-28T10:35:00Z", lifetimeValue: 1420, orderCount: 11 },
+  { id: "CUST-006", name: "Karan Verma", firstPurchaseDate: "2026-04-08T08:20:00Z", lastPurchaseDate: "2026-07-18T12:30:00Z", lifetimeValue: 820, orderCount: 6 },
+  { id: "CUST-007", name: "Aisha Khan", firstPurchaseDate: "2025-12-05T12:50:00Z", lastPurchaseDate: "2026-02-25T14:15:00Z", lifetimeValue: 190, orderCount: 3 },
+  { id: "CUST-008", name: "Riya Sharma", firstPurchaseDate: "2026-07-16T10:50:00Z", lastPurchaseDate: "2026-07-16T10:50:00Z", lifetimeValue: 38, orderCount: 1 }
+];

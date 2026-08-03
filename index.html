@@ -8,7 +8,34 @@
 </head>
 <body>
   <div class="toast-container" id="toast-container"></div>
-  <div style="display: flex; flex-direction: column; width: 100vw; height: 100vh;">
+  <section class="login-screen" id="login-screen" aria-labelledby="login-title">
+    <div class="login-panel">
+      <div class="login-brand" aria-label="ShopSense">
+        <div class="brand-logo">S</div>
+        <span>SHOPSENSE</span>
+      </div>
+      <h1 id="login-title">Sign in to ShopSense</h1>
+      <p class="login-intro">Choose the workspace you want to access.</p>
+      <div class="login-role-grid">
+        <button class="login-role" type="button" onclick="window.app.enterAdminPortal()">
+          <span class="login-role-title">Admin Login</span>
+          <span class="login-role-copy">Manage marketplace operations</span>
+          <span class="login-role-action">Continue</span>
+        </button>
+        <button class="login-role" type="button" onclick="window.app.enterVendorPortal()">
+          <span class="login-role-title">Vendor Login</span>
+          <span class="login-role-copy">Manage your products and performance</span>
+          <span class="login-role-action">Continue</span>
+        </button>
+        <button class="login-role" type="button" onclick="window.app.enterCustomerPortal()">
+          <span class="login-role-title">Customer Login</span>
+          <span class="login-role-copy">Access your customer account</span>
+          <span class="login-role-action">Continue</span>
+        </button>
+      </div>
+    </div>
+  </section>
+  <div id="app-shell" hidden style="flex-direction: column; width: 100vw; height: 100vh;">
     <div class="user-switch-banner">
       <span>Active Identity:</span>
       <select class="user-switch-select" id="role-selector" onchange="window.app.handleRoleChange(this.value)">
@@ -54,6 +81,15 @@
               <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 17h18M6 12h3m6 0h3M6 7h6m2 0h4"></path></svg>
               Customer Segmentation
             </a>
+            <a class="nav-link" onclick="window.app.switchTab('admin-customer-behavior')">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15v-4m4 4V7m4 8v-6"></path><path d="m15 7 2-2 2 2"></path></svg>
+              Customer Behaviour
+            </a>
+            <a class="nav-link" onclick="window.app.switchTab('admin-sales-revenue-intelligence')">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              Sales & Revenue Intelligence
+            </a>
+
           </div>
           <div class="nav-group" id="nav-group-vendor" style="display: none;">
             <div class="nav-title" id="vendor-nav-title">Vendor Center</div>
@@ -353,8 +389,153 @@
           </div>
         </section>
         <!-- ============================================== -->
+        <!-- VIEW: CUSTOMER BEHAVIOUR & RECOMMENDATIONS    -->
+        <!-- ============================================== -->
+        <section id="view-admin-customer-behavior" class="content-section">
+          <div class="behavior-page-header">
+            <div>
+              <span class="eyebrow">Existing marketplace data</span>
+              <h2>Customer behaviour &amp; recommendations</h2>
+              <p>Identify valuable audiences, spot churn risk, and act on recommendations generated from historical customer, product, and transaction records.</p>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="window.app.loadRevenueAnalytics()">Refresh insights</button>
+          </div>
+          <div class="grid-cols-4 behavior-metrics">
+            <div class="glass-card glow"><div class="metric-card"><span class="metric-label">Customers analysed</span><div class="metric-value-container"><span class="metric-value" id="cb-total-customers">0</span></div><span class="metric-trend trend-up">Customer database coverage</span></div></div>
+            <div class="glass-card"><div class="metric-card"><span class="metric-label">Repeat purchase rate</span><div class="metric-value-container"><span class="metric-value" id="cb-repeat-rate">0%</span></div><span class="metric-trend trend-up">More than one order</span></div></div>
+            <div class="glass-card"><div class="metric-card"><span class="metric-label">Average order value</span><div class="metric-value-container"><span class="metric-value" id="cb-average-order-value">₹0</span></div><span class="metric-trend trend-up">Lifetime value ÷ orders</span></div></div>
+            <div class="glass-card"><div class="metric-card"><span class="metric-label">Customers at risk</span><div class="metric-value-container"><span class="metric-value" id="cb-at-risk">0</span></div><span class="metric-trend trend-down">No order in 30+ days</span></div></div>
+          </div>
+          <div class="grid-cols-2">
+            <div class="glass-card">
+              <div class="card-header-flex"><div><span class="card-title">Audience health</span><div class="card-subtitle">Customer value and recency cohorts</div></div></div>
+              <div id="cb-segment-list" class="behavior-bars"></div>
+            </div>
+            <div class="glass-card">
+              <div class="card-header-flex"><div><span class="card-title">Top product signals</span><div class="card-subtitle">Best-selling products currently available to recommend</div></div></div>
+              <div id="cb-product-list" class="behavior-product-list"></div>
+            </div>
+          </div>
+          <div class="glass-card">
+            <div class="card-header-flex"><div><span class="card-title">Next-best recommendations</span><div class="card-subtitle">Prioritised customer outreach using existing marketplace purchase signals</div></div><span class="badge badge-approved">In stock</span></div>
+            <div class="table-container"><table><thead><tr><th>Customer</th><th>Audience</th><th>Recommended product</th><th>Why this action</th></tr></thead><tbody id="cb-recommendation-tbody"><tr><td colspan="4" class="behavior-empty">Loading recommendations...</td></tr></tbody></table></div>
+          </div>
+        </section>
+        <!-- ============================================== -->
+        <!-- VIEW: ADMIN SALES & REVENUE INTELLIGENCE       -->
+        <!-- ============================================== -->
+        <section id="view-admin-sales-revenue-intelligence" class="content-section">
+          <!-- Metric Cards -->
+          <div class="grid-cols-4" style="margin-bottom: 24px;">
+            <div class="glass-card glow">
+              <div class="metric-card">
+                <span class="metric-label">Sales Volume (Gross)</span>
+                <div class="metric-value-container">
+                  <span class="metric-value" id="sri-total-sales">₹0</span>
+                </div>
+                <span class="metric-trend trend-up" style="color: #10b981;">Marketplace Gross Value</span>
+              </div>
+            </div>
+            <div class="glass-card">
+              <div class="metric-card">
+                <span class="metric-label">Total Commissions Collected</span>
+                <div class="metric-value-container">
+                  <span class="metric-value" id="sri-total-commissions">₹0</span>
+                </div>
+                <span class="metric-trend trend-up" style="color: #8b5cf6;">Platform Revenue</span>
+              </div>
+            </div>
+            <div class="glass-card">
+              <div class="metric-card">
+                <span class="metric-label">Average Order Value (AOV)</span>
+                <div class="metric-value-container">
+                  <span class="metric-value" id="sri-avg-order-value">₹0</span>
+                </div>
+                <span class="metric-trend trend-up" style="color: #3b82f6;">Per Transaction Average</span>
+              </div>
+            </div>
+            <div class="glass-card">
+              <div class="metric-card">
+                <span class="metric-label">Total Orders Processed</span>
+                <div class="metric-value-container">
+                  <span class="metric-value" id="sri-total-transactions">0</span>
+                </div>
+                <span class="metric-trend trend-up" id="sri-transaction-subtext" style="color: #eab308;">Sales Velocity</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Grid -->
+          <div class="grid-cols-2" style="margin-bottom: 24px; display: grid; gap: 20px;">
+            <div class="glass-card">
+              <div class="card-header-flex" style="margin-bottom: 12px;">
+                <span class="card-title">Revenue Distribution by Vendor</span>
+              </div>
+              <div id="sri-chart-vendor-revenue" style="padding: 16px; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <!-- Filled dynamically by SVG -->
+              </div>
+            </div>
+            <div class="glass-card">
+              <div class="card-header-flex" style="margin-bottom: 12px;">
+                <span class="card-title">Sales Volume Share by Category</span>
+              </div>
+              <div id="sri-chart-category-sales" style="padding: 16px; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+                <!-- Filled dynamically by SVG -->
+              </div>
+            </div>
+          </div>
+
+
+          <!-- Transactions Ledger Table -->
+          <div class="glass-card">
+            <div class="card-header-flex" style="margin-bottom: 16px; flex-wrap: wrap; gap: 16px;">
+              <div>
+                <span class="card-title">Marketplace Transactions Ledger</span>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">Real-time ledger audit log across all active vendors.</div>
+              </div>
+              <!-- Interactive Filters -->
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <div class="search-container" style="margin-bottom: 0;">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" class="search-input" id="sri-filter-search" placeholder="Search product or txn ID..." style="max-width: 220px; padding: 6px 12px 6px 32px; font-size: 0.85rem;" oninput="window.app.filterSriLedger()">
+                </div>
+                <div class="select-wrapper">
+                  <select id="sri-filter-vendor" onchange="window.app.filterSriLedger()" style="padding: 6px 24px 6px 12px; font-size: 0.85rem; background: var(--bg-sidebar); color: var(--text-main); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                    <!-- Dynamically populated -->
+                  </select>
+                </div>
+                <div class="select-wrapper">
+                  <select id="sri-filter-category" onchange="window.app.filterSriLedger()" style="padding: 6px 24px 6px 12px; font-size: 0.85rem; background: var(--bg-sidebar); color: var(--text-main); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                    <!-- Dynamically populated -->
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Transaction ID</th>
+                    <th>Vendor</th>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Qty</th>
+                    <th>Total Amount</th>
+                    <th>Commission</th>
+                  </tr>
+                </thead>
+                <tbody id="sri-ledger-tbody">
+                  <!-- Dynamically populated -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <!-- ============================================== -->
         <!-- VIEW: VENDOR SETUP & ONBOARDING (STEPS)        -->
         <!-- ============================================== -->
+
         <section id="view-vendor-onboarding" class="content-section">
           <div class="glass-card" style="max-width: 800px; margin: 0 auto;">
             <!-- Stepper indicators -->
