@@ -31,6 +31,8 @@ const ROUTE_TITLES = {
   "admin-vendors": "Vendor Roster",
   "admin-categories": "Categories",
   "admin-benchmark": "Marketplace Benchmark",
+  "admin-system-status": "System Status & Integration",
+  "admin-executive-report": "Executive Business Report",
   "admin-compliance": "Compliance Pipeline",
   "admin-inventory": "Inventory Forecast",
   "admin-customer-segmentation": "Customer Segmentation",
@@ -150,7 +152,11 @@ const state = {
   adminDashboard: null,
   adminCategories: [],
   adminBenchmark: null,
-  customerDashboard: null
+  customerDashboard: null,
+  systemStatus: null,
+  executiveReport: null,
+  hasSeededCustomerCart: false,
+  replaceNextPortalHistory: false
 };
 
 
@@ -713,7 +719,7 @@ function renderCustomerHome() {
   if (!dashboard) return void (container.innerHTML = `<div class="vendor-empty-state">Loading customer dashboard...</div>`);
   const customer = dashboard.customer;
   const cartCount = state.cart?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-  container.innerHTML = `<div class="customer-hero"><div><h2>Welcome, ${escapeHtml(customer.name)}</h2><p>Search, browse, and buy products from all vendors on ShopSense.</p><div class="customer-search"><input id="customer-home-search" placeholder="Search for products, brands, and more..."><button onclick="window.app.openCustomerSearch()">Search</button></div></div><div class="customer-avatar">${escapeHtml(customer.name.charAt(0))}</div></div><div class="customer-shortcuts"><button onclick="window.app.switchTab('customer-cart')">Cart (${cartCount})</button><button onclick="window.app.switchTab('customer-transactions')">My Orders (${customer.orderCount})</button><button onclick="window.app.switchTab('customer-recommendations')">Wishlist (${state.wishlist?.length || 0})</button><button onclick="window.app.switchTab('customer-profile')">My Address</button><button onclick="window.app.switchTab('customer-spending')">My Spending</button></div><div class="card-header-flex customer-section-title"><div><span class="card-title">Recommended for You</span><div class="vendor-section-hint">Suggestions generated from product and transaction data.</div></div></div><div class="customer-recommendation-grid">${dashboard.recommendations.map(customerProductCard).join("")}</div>`;
+  container.innerHTML = `<div class="customer-hero"><div><h2>Welcome, ${escapeHtml(customer.name)}</h2><p>Search, browse, and buy products from all vendors on ShopSense.</p><div class="customer-search"><input id="customer-home-search" placeholder="Search for products, brands, and more..."><button onclick="window.app.openCustomerSearch()">Search</button></div></div><div class="customer-avatar">${escapeHtml(customer.name.charAt(0))}</div></div><div class="customer-shortcuts"><button onclick="window.app.switchTab('customer-cart')">Cart (${cartCount})</button><button onclick="window.app.switchTab('customer-transactions')">My Orders (${customer.orderCount})</button><button onclick="window.app.switchTab('customer-recommendations')">Wishlist (${state.wishlist?.length || 0})</button><button onclick="window.app.switchTab('customer-profile')">My Address</button><button onclick="window.app.switchTab('customer-spending')">My Spending</button></div><div class="customer-improvement-highlight"><div><strong>Quick shopping highlight</strong><span>Add a curated set of in-stock products directly to My Cart, or browse products one by one.</span></div><div><button onclick="window.app.addFeaturedProductsToCart()">Add featured products</button><button onclick="window.app.switchTab('customer-cart')">View My Cart (${cartCount})</button><button onclick="window.app.switchTab('customer-products')">Browse products</button></div></div><div class="card-header-flex customer-section-title"><div><span class="card-title">Recommended for You</span><div class="vendor-section-hint">Suggestions generated from product and transaction data.</div></div></div><div class="customer-recommendation-grid">${dashboard.recommendations.map(customerProductCard).join("")}</div>`;
 }
 
 function renderCustomerSpending() {
@@ -834,8 +840,29 @@ function addToCart(productId) {
       state.cart.push({ ...product, quantity: 1 });
     }
     updateCartCount();
+    renderCustomerHome();
     showToast(`${product.name} added to cart!`);
   }
+}
+
+function addFeaturedProductsToCart() {
+  const featuredProducts = state.products
+    .filter((product) => product.status === "active" && Number(product.stock || 0) > 0)
+    .slice(0, 3);
+
+  if (!featuredProducts.length) {
+    showToast("There are no in-stock products available to add.", "error");
+    return;
+  }
+
+  featuredProducts.forEach((product) => {
+    const existingItem = state.cart.find((item) => item.id === product.id);
+    if (existingItem) existingItem.quantity += 1;
+    else state.cart.push({ ...product, quantity: 1 });
+  });
+  updateCartCount();
+  renderCustomerHome();
+  showToast(`${featuredProducts.length} featured products added to My Cart.`, "success");
 }
 
 function addToWishlist(productId) {
@@ -1170,6 +1197,35 @@ function renderAdminBenchmark() {
   categoriesTbody.innerHTML = benchmark.categoryPerformance.length
     ? benchmark.categoryPerformance.map((category) => `<tr><td><strong>${escapeHtml(category.category)}</strong></td><td>${currency.format(category.revenue)}</td><td>${category.unitsSold}</td></tr>`).join("")
     : `<tr><td colspan="3" style="color:var(--text-muted);">No category sales recorded yet.</td></tr>`;
+}
+
+function renderSystemStatus() {
+  const status = state.systemStatus;
+  const log = byId("admin-system-status-log");
+  const validationBadge = byId("admin-validation-status");
+  const validationMetrics = byId("admin-validation-metrics");
+  if (!log || !validationBadge || !validationMetrics) return;
+  if (!status) {
+    log.textContent = "Loading system status...";
+    validationBadge.textContent = "Loading";
+    return;
+  }
+  log.innerHTML = status.services.map((service) => `<div><span class="status-ok">OK</span> ${escapeHtml(service.name)}: ${escapeHtml(service.message)}</div>`).join("");
+  validationBadge.textContent = status.validation.complete ? "Complete" : "Needs attention";
+  validationBadge.className = `badge ${status.validation.complete ? "badge-approved" : "badge-pending"}`;
+  validationMetrics.innerHTML = `<div class="glass-card"><div class="metric-card"><span class="metric-label">Historical orders</span><span class="metric-value">${status.validation.transactionCount}</span></div></div><div class="glass-card"><div class="metric-card"><span class="metric-label">Completed orders</span><span class="metric-value">${status.validation.completedOrderCount}</span></div></div><div class="glass-card"><div class="metric-card"><span class="metric-label">Cancelled orders</span><span class="metric-value">${status.validation.cancelledOrderCount}</span></div></div><div class="glass-card"><div class="metric-card"><span class="metric-label">Products validated</span><span class="metric-value">${status.validation.productCount}</span></div></div>`;
+}
+
+function renderExecutiveReport() {
+  const report = state.executiveReport;
+  const metrics = byId("executive-report-metrics");
+  const vendors = byId("executive-report-vendors");
+  const highlights = byId("executive-report-highlights");
+  if (!metrics || !vendors || !highlights) return;
+  if (!report) return void (metrics.innerHTML = `<div class="vendor-empty-state">Loading executive report...</div>`);
+  metrics.innerHTML = `<div class="glass-card"><div class="metric-card"><span class="metric-label">Net revenue</span><span class="metric-value">${currency.format(report.netRevenue)}</span><span class="metric-trend trend-up">Cancelled orders excluded</span></div></div><div class="glass-card"><div class="metric-card"><span class="metric-label">Completed orders</span><span class="metric-value">${report.completedOrders}</span><span class="metric-trend trend-up">Fulfilled marketplace orders</span></div></div><div class="glass-card"><div class="metric-card"><span class="metric-label">Average order value</span><span class="metric-value">${currency.format(report.averageOrderValue)}</span><span class="metric-trend trend-up">Completed orders only</span></div></div><div class="glass-card"><div class="metric-card"><span class="metric-label">Cancellation rate</span><span class="metric-value">${report.cancellationRate.toFixed(1)}%</span><span class="metric-trend trend-down">${report.cancelledOrders} cancelled orders</span></div></div>`;
+  vendors.innerHTML = report.topVendors.map((vendor, index) => `<div class="vendor-list-row"><div><span class="vendor-rank">#${index + 1}</span><strong>${escapeHtml(vendor.name)}</strong><span>${vendor.orders} completed orders</span></div><strong>${currency.format(vendor.revenue)}</strong></div>`).join("") || `<div class="vendor-empty-state">No vendor sales data.</div>`;
+  highlights.innerHTML = `<div class="vendor-list-row"><div><strong>Leading category</strong><span>${escapeHtml(report.leadingCategory?.category || "No sales data")}</span></div><strong>${currency.format(report.leadingCategory?.revenue || 0)}</strong></div><div class="vendor-list-row"><div><strong>Active sellers</strong><span>Vendors ready to trade</span></div><strong>${report.activeVendors}</strong></div><div class="vendor-list-row"><div><strong>Catalogue health</strong><span>Low-stock items requiring action</span></div><strong>${report.lowStockCount}</strong></div>`;
 }
 
 function renderVendorTable() {
@@ -1778,6 +1834,24 @@ async function loadRevenueAnalytics() {
   }
 
   try {
+    const response = await fetch("/api/admin/system-status");
+    if (!response.ok) throw new Error("System status request failed");
+    state.systemStatus = await response.json();
+  } catch (error) {
+    console.warn("Unable to load system status from API", error);
+    state.systemStatus = null;
+  }
+
+  try {
+    const response = await fetch("/api/admin/executive-report");
+    if (!response.ok) throw new Error("Executive report request failed");
+    state.executiveReport = await response.json();
+  } catch (error) {
+    console.warn("Unable to load executive report from API", error);
+    state.executiveReport = null;
+  }
+
+  try {
     const response = await fetch("/api/analytics/customer-behavior");
     if (!response.ok) throw new Error("Customer behaviour request failed");
     state.customerBehaviorAnalytics = await response.json();
@@ -1789,6 +1863,8 @@ async function loadRevenueAnalytics() {
   renderRevenueAnalytics();
   renderAdminCategories();
   renderAdminBenchmark();
+  renderSystemStatus();
+  renderExecutiveReport();
   renderCustomerBehaviorDashboard();
   renderSalesRevenueIntelligence();
   window.analyticsUI?.renderAnalyticsCharts();
@@ -1831,6 +1907,19 @@ function showToast(message, type = "info") {
   setTimeout(() => toast.remove(), 3200);
 }
 
+let isRestoringHistory = false;
+
+function recordPortalHistory(tab) {
+  if (isRestoringHistory || byId("app-shell")?.hidden) return;
+  const nextState = { screen: "portal", role: state.currentRole, vendorId: state.currentVendorId, tab };
+  if (state.replaceNextPortalHistory || (history.state?.screen === "portal" && history.state?.tab === tab && history.state?.role === state.currentRole)) {
+    history.replaceState(nextState, "", `#${tab}`);
+    state.replaceNextPortalHistory = false;
+  } else {
+    history.pushState(nextState, "", `#${tab}`);
+  }
+}
+
 function switchTab(tab) {
   document.querySelectorAll(".content-section").forEach((section) => section.classList.remove("active"));
   document.querySelectorAll(".nav-link").forEach((link) => link.classList.remove("active"));
@@ -1841,6 +1930,8 @@ function switchTab(tab) {
   if (tab === "admin-inventory") renderInventoryForecastPage();
   if (tab === "admin-categories") renderAdminCategories();
   if (tab === "admin-benchmark") renderAdminBenchmark();
+  if (tab === "admin-system-status") renderSystemStatus();
+  if (tab === "admin-executive-report") renderExecutiveReport();
   if (tab === "admin-customer-segmentation") {
     renderCustomerSegmentation();
     window.analyticsUI?.renderAnalyticsCharts();
@@ -1853,6 +1944,7 @@ function switchTab(tab) {
     renderVendorViews();
     refreshVendorDashboard(state.currentVendorId);
   }
+  recordPortalHistory(tab);
 }
 
 function handleRoleChange(value) {
@@ -1886,6 +1978,9 @@ function enterPortal() {
   byId("login-screen").hidden = true;
   byId("app-shell").hidden = false;
   byId("app-shell").style.display = "flex";
+  // Make the landing page the first history entry for this portal session.
+  // Subsequent tab changes are still pushed, so Back returns to the previous page.
+  if (!isRestoringHistory) state.replaceNextPortalHistory = true;
 }
 
 function enterAdminPortal() {
@@ -1917,6 +2012,10 @@ function enterCustomerPortal() {
   state.selectedCustomerId = state.selectedCustomerId || state.customers[0]?.id || null;
   if (!state.cart) state.cart = [];
   if (!state.wishlist) state.wishlist = [];
+  if (!state.hasSeededCustomerCart && state.cart.length === 0) {
+    state.products.filter((product) => product.status === "active" && Number(product.stock || 0) > 0).slice(0, 2).forEach((product) => state.cart.push({ ...product, quantity: 1 }));
+    state.hasSeededCustomerCart = true;
+  }
   enterPortal();
   byId("role-selector").value = "customer";
   renderAll();
@@ -2013,6 +2112,7 @@ function renderUploadBadges() {
 }
 
 function init() {
+  if (!history.state) history.replaceState({ screen: "login" }, "", location.pathname);
   const savedRegion = localStorage.getItem(STORE_KEYS.dataRegion);
   if (savedRegion !== DATA_REGION) {
     localStorage.removeItem(STORE_KEYS.vendors);
@@ -2041,6 +2141,26 @@ function init() {
   loadRevenueAnalytics();
 }
 
+window.addEventListener("popstate", (event) => {
+  const route = event.state;
+  if (!route || route.screen !== "portal") {
+    state.currentRole = null;
+    state.currentVendorId = null;
+    byId("app-shell").hidden = true;
+    byId("app-shell").style.display = "";
+    byId("login-screen").hidden = false;
+    backend.showRoleSelection();
+    return;
+  }
+  isRestoringHistory = true;
+  state.currentRole = route.role;
+  state.currentVendorId = route.vendorId || null;
+  enterPortal();
+  renderAll();
+  switchTab(route.tab || (route.role === "admin" ? "admin-dashboard" : "vendor-dashboard"));
+  isRestoringHistory = false;
+});
+
 window.app = {
   switchTab,
   handleRoleChange,
@@ -2054,6 +2174,7 @@ window.app = {
   filterByCategory,
   openCustomerSearch,
   addToCart,
+  addFeaturedProductsToCart,
   addToWishlist,
   updateCartQuantity,
   removeFromCart,

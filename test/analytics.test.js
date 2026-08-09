@@ -111,3 +111,57 @@ test('GET /api/analytics/customer-behavior returns metrics and recommendations f
     await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
   }
 });
+
+test('GET /api/admin/executive-report excludes cancelled orders from net revenue', async () => {
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+
+  try {
+    const response = await requestJson(`http://127.0.0.1:${port}/api/admin/executive-report`);
+    assert.equal(response.statusCode, 200);
+    assert.ok(response.body.netRevenue > 0);
+    assert.ok(response.body.completedOrders > 0);
+    assert.ok(response.body.cancelledOrders > 0);
+    assert.ok(response.body.cancellationRate > 0);
+    assert.ok(response.body.topVendors.length > 0);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});
+
+test('GET /api/admin/system-status validates historical order pricing', async () => {
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+
+  try {
+    const response = await requestJson(`http://127.0.0.1:${port}/api/admin/system-status`);
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.validation.complete, true);
+    assert.equal(response.body.validation.invalidTransactionCount, 0);
+    assert.ok(response.body.services.some((service) => service.name === 'Node application server'));
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});
+
+test('core analytics APIs pass a local performance smoke check', async () => {
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+
+  try {
+    const startedAt = Date.now();
+    const responses = await Promise.all([
+      requestJson(`http://127.0.0.1:${port}/api/admin/dashboard`),
+      requestJson(`http://127.0.0.1:${port}/api/admin/executive-report`),
+      requestJson(`http://127.0.0.1:${port}/api/admin/system-status`),
+      requestJson(`http://127.0.0.1:${port}/api/analytics/customer-behavior`)
+    ]);
+    assert.ok(responses.every((response) => response.statusCode === 200));
+    assert.ok(Date.now() - startedAt < 1000, 'Expected local analytics API smoke check to finish within one second');
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});

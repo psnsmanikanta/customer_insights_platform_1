@@ -354,6 +354,58 @@ async function handleApi(request, response, url) {
       });
     }
 
+    if (request.method === "GET" && url.pathname === "/api/admin/system-status") {
+      const completed = completedTransactions();
+      const cancelled = transactions.filter((transaction) => String(transaction.status || "").toLowerCase() === "cancelled");
+      const invalidTransactionCount = transactions.filter((transaction) => {
+        const product = products.find((item) => item.id === transaction.productId);
+        return !product || Math.abs((Number(product.price || 0) * Number(transaction.quantity || 0)) - Number(transaction.totalAmount || 0)) > 0.001;
+      }).length;
+      return sendJson(response, 200, {
+        services: [
+          { name: "Node application server", message: "API service is active" },
+          { name: "Marketplace analytics endpoints", message: "Revenue, benchmark, and customer analytics are available" },
+          { name: "Forecasting integration", message: "Not configured in this project" },
+          { name: "BI dashboard data", message: `${products.length} products and ${transactions.length} orders are available` }
+        ],
+        validation: {
+          complete: invalidTransactionCount === 0 && products.length > 0 && transactions.length > 0,
+          transactionCount: transactions.length,
+          completedOrderCount: completed.length,
+          cancelledOrderCount: cancelled.length,
+          productCount: products.length,
+          invalidTransactionCount
+        }
+      });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/admin/executive-report") {
+      const completed = completedTransactions();
+      const netRevenue = completed.reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0);
+      const cancelledOrders = transactions.filter((transaction) => String(transaction.status || "").toLowerCase() === "cancelled").length;
+      const topVendors = vendors.map((vendor) => {
+        const orders = completed.filter((transaction) => transaction.vendorId === vendor.id);
+        return { name: vendor.businessName, revenue: orders.reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0), orders: orders.length };
+      }).filter((vendor) => vendor.revenue > 0).sort((left, right) => right.revenue - left.revenue).slice(0, 5);
+      const categoryRevenue = Object.values(completed.reduce((result, transaction) => {
+        const category = products.find((product) => product.id === transaction.productId)?.category || "Uncategorised";
+        if (!result[category]) result[category] = { category, revenue: 0 };
+        result[category].revenue += Number(transaction.totalAmount || 0);
+        return result;
+      }, {})).sort((left, right) => right.revenue - left.revenue);
+      return sendJson(response, 200, {
+        netRevenue,
+        completedOrders: completed.length,
+        cancelledOrders,
+        cancellationRate: transactions.length ? (cancelledOrders / transactions.length) * 100 : 0,
+        averageOrderValue: completed.length ? netRevenue / completed.length : 0,
+        activeVendors: vendors.filter((vendor) => getStatus(vendor) === "active").length,
+        lowStockCount: products.filter((product) => Number(product.stock || 0) < 20).length,
+        topVendors,
+        leadingCategory: categoryRevenue[0] || null
+      });
+    }
+
     if (request.method === "GET" && url.pathname === "/api/analytics/customer-behavior") {
       return sendJson(response, 200, buildCustomerBehaviorAnalytics());
     }

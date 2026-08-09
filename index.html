@@ -142,9 +142,17 @@
               <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 20h18"></path><path d="M6 17V9m6 8V4m6 13v-6"></path></svg>
               Benchmark
             </a>
+            <a class="nav-link" onclick="window.app.switchTab('admin-executive-report')">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18"></path><path d="M7 15v-4m4 4V7m4 8v-6"></path></svg>
+              Executive Report
+            </a>
             <a class="nav-link" onclick="window.app.switchTab('admin-customer-segmentation')">
               <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18"></path><path d="M7 15v-4m4 4V7m4 8v-6"></path></svg>
               BI Dashboard
+            </a>
+            <a class="nav-link" onclick="window.app.switchTab('admin-system-status')">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01"></path><path d="M10.3 3.9 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+              System Status
             </a>
 
           </div>
@@ -327,6 +335,15 @@
               <button type="button" class="vendor-action" onclick="window.app.switchTab('admin-sales-revenue-intelligence')"><span class="vendor-action-icon">R</span><span>Reports</span></button>
             </div>
           </div>
+          <div class="improvement-highlight">
+            <div class="improvement-highlight-heading"><div><span class="card-title">Suggested Enhancements</span><div class="vendor-section-hint">Highlighted opportunities you can add next to make the marketplace more complete.</div></div><span class="improvement-highlight-badge">Next steps</span></div>
+            <div class="improvement-highlight-grid">
+              <button type="button" onclick="window.app.switchTab('admin-vendors')"><strong>Vendor product editing</strong><span>Allow vendors to update product details, images, price, and stock.</span></button>
+              <button type="button" onclick="window.app.switchTab('admin-sales-revenue-intelligence')"><strong>Order tracking &amp; invoices</strong><span>Add shipment tracking, invoice downloads, and return handling.</span></button>
+              <button type="button" onclick="window.app.switchTab('admin-customer-behavior')"><strong>Ratings &amp; reviews</strong><span>Capture customer reviews and measure product satisfaction.</span></button>
+              <button type="button" onclick="window.app.switchTab('admin-inventory')"><strong>Reorder notifications</strong><span>Notify vendors before a product reaches low stock.</span></button>
+            </div>
+          </div>
           <!-- Section split -->
           <div class="grid-cols-2">
             <!-- Left: Pending Actions / Verifications -->
@@ -451,6 +468,26 @@
               <div class="table-container"><table><thead><tr><th>Category</th><th>Revenue</th><th>Units Sold</th></tr></thead><tbody id="admin-benchmark-categories-tbody"><tr><td colspan="3" style="color:var(--text-muted);">Loading category benchmark...</td></tr></tbody></table></div>
             </div>
           </div>
+        </section>
+        <!-- ============================================== -->
+        <!-- VIEW: ADMIN SYSTEM STATUS                      -->
+        <!-- ============================================== -->
+        <section id="view-admin-system-status" class="content-section">
+          <div class="glass-card">
+            <div class="card-header-flex"><div><span class="card-title">System Status &amp; Integration</span><div class="vendor-section-hint">Live application, API, and historical-dataset validation status.</div></div><button class="btn btn-secondary btn-sm" onclick="window.app.loadRevenueAnalytics()">Refresh status</button></div>
+            <div class="status-log" id="admin-system-status-log">Loading system status...</div>
+          </div>
+          <div class="glass-card" style="margin-top:24px;">
+            <div class="card-header-flex"><div><span class="card-title">Analytical Validation Against Historical Datasets</span><div class="vendor-section-hint">Checks performed using the current product, order, vendor, and customer records.</div></div><span class="badge badge-approved" id="admin-validation-status">Loading</span></div>
+            <div class="grid-cols-4" id="admin-validation-metrics"></div>
+          </div>
+        </section>
+        <section id="view-admin-executive-report" class="content-section">
+          <div class="glass-card">
+            <div class="card-header-flex"><div><span class="card-title">Executive Business Report</span><div class="vendor-section-hint">A concise live view of marketplace revenue, order quality, and commercial leaders.</div></div><button class="btn btn-secondary btn-sm" onclick="window.app.loadRevenueAnalytics()">Refresh report</button></div>
+            <div class="grid-cols-4" id="executive-report-metrics"><div class="vendor-empty-state">Loading executive report...</div></div>
+          </div>
+          <div class="grid-cols-2" style="margin-top:24px;"><div class="glass-card"><div class="card-header-flex"><span class="card-title">Top Vendor Performance</span></div><div id="executive-report-vendors" class="vendor-list"></div></div><div class="glass-card"><div class="card-header-flex"><span class="card-title">Commercial Highlights</span></div><div id="executive-report-highlights" class="vendor-list"></div></div></div>
         </section>
         <!-- ============================================== -->
         <!-- VIEW: ADMIN VENDOR ROSTER                      -->
@@ -921,6 +958,10 @@
               <button type="button" class="vendor-action" onclick="window.app.switchTab('vendor-catalog')"><span class="vendor-action-icon">▥</span><span>Inventory</span></button>
               <button type="button" class="vendor-action" onclick="window.app.switchTab('admin-sales-revenue-intelligence')"><span class="vendor-action-icon">↗</span><span>Transactions</span></button>
             </div>
+          </div>
+          <div class="vendor-improvement-highlight">
+            <div><span class="card-title">Suggested Vendor Enhancements</span><div class="vendor-section-hint">These highlighted areas can be added next to improve this vendor workspace.</div></div>
+            <div class="vendor-improvement-actions"><button type="button" onclick="window.app.switchTab('vendor-catalog')">Product editing &amp; image updates</button><button type="button" onclick="window.app.switchTab('vendor-transactions')">Invoices &amp; shipment tracking</button><button type="button" onclick="window.app.switchTab('vendor-dashboard')">Sales goals &amp; export reports</button></div>
           </div>
 
           <div class="grid-cols-2">
