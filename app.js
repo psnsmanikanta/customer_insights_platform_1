@@ -3,7 +3,10 @@ const STORE_KEYS = {
   products: "shopsense.module1.products",
   transactions: "shopsense.module1.transactions",
   customers: "shopsense.module1.customers",
-  dataRegion: "shopsense.module1.dataRegion"
+  dataRegion: "shopsense.module1.dataRegion",
+  vendorSalesGoals: "shopsense.module1.vendorSalesGoals",
+  reviews: "shopsense.module1.reviews",
+  reorderSettings: "shopsense.module1.reorderSettings"
 };
 
 const STATUS_LABELS = {
@@ -174,6 +177,7 @@ const storage = {
     localStorage.setItem(STORE_KEYS.vendors, JSON.stringify(state.vendors));
     localStorage.setItem(STORE_KEYS.products, JSON.stringify(state.products));
     localStorage.setItem(STORE_KEYS.customers, JSON.stringify(state.customers));
+    localStorage.setItem(STORE_KEYS.transactions, JSON.stringify(state.transactions));
   }
 };
 
@@ -246,6 +250,7 @@ function defaultVendor(input) {
     address: input.address || "India address not provided",
     contactPerson: input.contactPerson || input.businessName || "Vendor Owner",
     email: input.email?.trim().toLowerCase(),
+    password: input.password || "vendorpassword",
     phone: input.phone?.trim(),
     categories: input.categories?.length ? input.categories : ["General Merchandise"],
     commission,
@@ -278,8 +283,6 @@ function defaultVendor(input) {
 }
 
 const ADMIN_CREDENTIALS = { email: "admin@shopsense.com", password: "adminpassword" };
-const VENDOR_CREDENTIALS = { email: "vendor@shopsense.com", password: "vendorpassword" };
-const CUSTOMER_CREDENTIALS = { email: "customer@shopsense.com", password: "customerpassword" };
 
 const backend = {
   listVendors(query = {}) {
@@ -309,7 +312,7 @@ const backend = {
   },
   loginVendor(payload) {
     const vendor = state.vendors.find(item => item.email.toLowerCase() === String(payload.email || "").toLowerCase());
-    if (!vendor || payload.password !== "vendorpassword") { // Simplified password check for demo
+    if (!vendor || payload.password !== vendor.password) {
       throw { status: 401, message: "Invalid vendor email or password" };
     }
     state.currentRole = vendor.id;
@@ -327,11 +330,10 @@ const backend = {
       throw { status: 401, message: "Invalid admin email or password" };
     }
   },
-      loginCustomer(payload) {
-    // Automatically log in as the first customer for demonstration purposes.
-    const customer = state.customers[0];
-    if (!customer) {
-      throw { status: 401, message: "No customers available to log in." };
+  loginCustomer(payload) {
+    const customer = state.customers.find((item) => item.email?.toLowerCase() === String(payload.email || "").toLowerCase());
+    if (!customer || payload.password !== customer.password) {
+      throw { status: 401, message: "Invalid customer email or password" };
     }
     state.currentRole = "customer";
     state.selectedCustomerId = customer.id;
@@ -352,10 +354,6 @@ const backend = {
   },
 
   showLoginForm(role) {
-    if (role === "customer") {
-      enterCustomerPortal();
-      return;
-    }
     state.currentLoginRole = role;
     const loginScreen = byId('login-screen');
     const roleGrid = loginScreen.querySelector('.login-role-grid');
@@ -377,7 +375,7 @@ const backend = {
             <label><input type="checkbox" id="remember-me"> Remember me</label>
           </div>
           <div id="login-customer-note" class="info-message" style="display: none; margin-bottom: 16px; color: #0f766e;">
-            Customer access does not require email or password.
+            Use the email and password assigned to your customer account.
           </div>
           <button class="btn btn-primary" onclick="window.app.processLogin()" style="width: 100%;">Sign In</button>
           <button class="btn btn-secondary" onclick="window.app.showRoleSelection()" style="width: 100%; margin-top: 10px;">Back to Role Selection</button>
@@ -395,21 +393,14 @@ const backend = {
     const loginPasswordField = byId("login-password")?.closest(".form-field");
     const rememberField = byId("remember-me")?.closest(".form-options");
     const customerNote = byId("login-customer-note");
-    const showCredentials = role !== "customer";
-
-    if (loginEmailField) loginEmailField.style.display = showCredentials ? "block" : "none";
-    if (loginPasswordField) loginPasswordField.style.display = showCredentials ? "block" : "none";
-    if (rememberField) rememberField.style.display = showCredentials ? "block" : "none";
-    if (customerNote) customerNote.style.display = showCredentials ? "none" : "block";
-
-    if (showCredentials) {
-      byId("login-email").value = localStorage.getItem("rememberedEmail") || "";
-      byId("remember-me").checked = false;
-    } else {
-      byId("login-email").value = "";
-      byId("remember-me").checked = false;
-    }
-    byId("login-password").value = "";
+    if (loginEmailField) loginEmailField.style.display = "block";
+    if (loginPasswordField) loginPasswordField.style.display = "block";
+    if (rememberField) rememberField.style.display = "block";
+    if (customerNote) customerNote.style.display = role === "customer" ? "block" : "none";
+    const useSavedCredentials = localStorage.getItem("rememberedRole") === role;
+    byId("login-email").value = useSavedCredentials ? (localStorage.getItem("rememberedEmail") || "") : "";
+    byId("login-password").value = useSavedCredentials ? (localStorage.getItem("rememberedPassword") || "") : "";
+    byId("remember-me").checked = useSavedCredentials;
     byId("login-error-message").style.display = "none";
   },
 
@@ -432,8 +423,7 @@ const backend = {
     errorMessageDiv.style.display = "none";
     errorMessageDiv.textContent = "";
 
-    const requiresCredentials = state.currentLoginRole !== "customer";
-    if (requiresCredentials && (!email || !password)) {
+    if (!email || !password) {
       errorMessageDiv.textContent = "Please enter both email and password.";
       errorMessageDiv.style.display = "block";
       return;
@@ -446,15 +436,16 @@ const backend = {
       } else if (state.currentLoginRole === "vendor") {
         result = backend.loginVendor({ email, password });
       } else if (state.currentLoginRole === "customer") {
-        result = backend.loginCustomer({});
-        hideLoginScreen();
+        result = backend.loginCustomer({ email, password });
       } else {
         throw { status: 400, message: "Invalid login role." };
       }
-      if (byId("remember-me").checked && state.currentLoginRole !== "customer") {
+      const loginRole = state.currentLoginRole;
+      if (byId("remember-me").checked) {
         localStorage.setItem("rememberedEmail", email);
-        localStorage.setItem("rememberedRole", state.currentLoginRole);
-        if (state.currentLoginRole === "customer") {
+        localStorage.setItem("rememberedRole", loginRole);
+        localStorage.setItem("rememberedPassword", password);
+        if (loginRole === "customer") {
           const customer = state.customers.find(c => c.email?.toLowerCase() === email.toLowerCase());
           if (customer) {
             localStorage.setItem("rememberedCustomerId", customer.id);
@@ -463,18 +454,18 @@ const backend = {
       } else {
         localStorage.removeItem("rememberedEmail");
         localStorage.removeItem("rememberedRole");
+        localStorage.removeItem("rememberedPassword");
         localStorage.removeItem("rememberedCustomerId");
       }
-      if (state.currentLoginRole === "customer") {
-        switchTab('customer-products');
-      } else if (state.currentLoginRole === "vendor") {
-        switchTab('vendor-dashboard');
+      window.app.showRoleSelection();
+      if (loginRole === "customer") enterCustomerPortal();
+      else if (loginRole === "admin") enterAdminPortal();
+      else {
+        enterPortal();
+        renderAll();
+        switchTab("vendor-dashboard");
       }
-      window.app.showRoleSelection(); // Hide login form on successful login
-      byId("login-screen").hidden = true;
-      byId("app-shell").hidden = false;
-      renderAll();
-      showToast(`Logged in as ${state.currentLoginRole}!`, "success");
+      showToast(`Logged in as ${loginRole}!`, "success");
     } catch (error) {
       errorMessageDiv.textContent = error.message || "Login failed. Please try again.";
       errorMessageDiv.style.display = "block";
@@ -486,6 +477,7 @@ const backend = {
     state.currentLoginRole = null;
     localStorage.removeItem("rememberedEmail");
     localStorage.removeItem("rememberedRole");
+    localStorage.removeItem("rememberedPassword");
     localStorage.removeItem("rememberedCustomerId");
     byId("login-screen").hidden = false;
     byId("app-shell").hidden = true;
@@ -496,39 +488,43 @@ const backend = {
   checkRememberedLogin() {
     const rememberedEmail = localStorage.getItem("rememberedEmail");
     const rememberedRole = localStorage.getItem("rememberedRole");
+    const rememberedPassword = localStorage.getItem("rememberedPassword");
     const rememberedCustomerId = localStorage.getItem("rememberedCustomerId");
 
-    if (rememberedEmail && rememberedRole) {
+    if (rememberedEmail && rememberedRole && rememberedPassword) {
       try {
         let result;
         if (rememberedRole === "admin") {
-          result = backend.loginAdmin({ email: rememberedEmail, password: "adminpassword" });
+          result = backend.loginAdmin({ email: rememberedEmail, password: rememberedPassword });
         } else if (rememberedRole === "vendor") {
           const vendor = state.vendors.find(v => v.email?.toLowerCase() === rememberedEmail.toLowerCase());
           if(vendor) {
-            result = backend.loginVendor({ email: rememberedEmail, password: "vendorpassword" });
+          result = backend.loginVendor({ email: rememberedEmail, password: rememberedPassword });
           }
         } else if (rememberedRole === "customer") {
-          result = backend.loginCustomer({ email: rememberedEmail, password: "customerpassword" });
+          const customer = state.customers.find((item) => item.email?.toLowerCase() === rememberedEmail.toLowerCase());
+          result = backend.loginCustomer({ email: rememberedEmail, password: rememberedPassword });
           if (result && rememberedCustomerId) {
             state.selectedCustomerId = rememberedCustomerId;
           }
         }
 
         if (result) {
-          state.currentLoginRole = rememberedRole;
-          if (rememberedRole === "customer") {
-            switchTab('customer-products');
+          state.currentLoginRole = null;
+          if (rememberedRole === "customer") enterCustomerPortal();
+          else if (rememberedRole === "admin") enterAdminPortal();
+          else {
+            enterPortal();
+            renderAll();
+            switchTab("vendor-dashboard");
           }
-          byId("login-screen").hidden = true;
-          byId("app-shell").hidden = false;
-          renderAll();
           showToast(`Welcome back! Logged in as ${rememberedRole}.`, "success");
         }
       } catch (error) {
         console.warn("Remembered login failed:", error);
         localStorage.removeItem("rememberedEmail");
         localStorage.removeItem("rememberedRole");
+        localStorage.removeItem("rememberedPassword");
         localStorage.removeItem("rememberedCustomerId");
       }
     }
@@ -719,7 +715,104 @@ function renderCustomerHome() {
   if (!dashboard) return void (container.innerHTML = `<div class="vendor-empty-state">Loading customer dashboard...</div>`);
   const customer = dashboard.customer;
   const cartCount = state.cart?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-  container.innerHTML = `<div class="customer-hero"><div><h2>Welcome, ${escapeHtml(customer.name)}</h2><p>Search, browse, and buy products from all vendors on ShopSense.</p><div class="customer-search"><input id="customer-home-search" placeholder="Search for products, brands, and more..."><button onclick="window.app.openCustomerSearch()">Search</button></div></div><div class="customer-avatar">${escapeHtml(customer.name.charAt(0))}</div></div><div class="customer-shortcuts"><button onclick="window.app.switchTab('customer-cart')">Cart (${cartCount})</button><button onclick="window.app.switchTab('customer-transactions')">My Orders (${customer.orderCount})</button><button onclick="window.app.switchTab('customer-recommendations')">Wishlist (${state.wishlist?.length || 0})</button><button onclick="window.app.switchTab('customer-profile')">My Address</button><button onclick="window.app.switchTab('customer-spending')">My Spending</button></div><div class="customer-improvement-highlight"><div><strong>Quick shopping highlight</strong><span>Add a curated set of in-stock products directly to My Cart, or browse products one by one.</span></div><div><button onclick="window.app.addFeaturedProductsToCart()">Add featured products</button><button onclick="window.app.switchTab('customer-cart')">View My Cart (${cartCount})</button><button onclick="window.app.switchTab('customer-products')">Browse products</button></div></div><div class="card-header-flex customer-section-title"><div><span class="card-title">Recommended for You</span><div class="vendor-section-hint">Suggestions generated from product and transaction data.</div></div></div><div class="customer-recommendation-grid">${dashboard.recommendations.map(customerProductCard).join("")}</div>`;
+  const featuredProducts = state.products.filter((product) => product.status === "active" && Number(product.stock || 0) > 0).sort((left, right) => Number(right.stock) - Number(left.stock)).slice(0, 4);
+  container.innerHTML = `<div class="customer-hero"><div><h2>Welcome, ${escapeHtml(customer.name)}</h2><p>Search, browse, and buy products from all vendors on ShopSense.</p><div class="customer-search"><input id="customer-home-search" placeholder="Search for products, brands, and more..."><button onclick="window.app.openCustomerSearch()">Search</button></div></div><div class="customer-avatar">${escapeHtml(customer.name.charAt(0))}</div></div><div class="customer-shortcuts"><button onclick="window.app.switchTab('customer-cart')">Cart (${cartCount})</button><button onclick="window.app.switchTab('customer-transactions')">My Orders (${customer.orderCount})</button><button onclick="window.app.switchTab('customer-recommendations')">Wishlist (${state.wishlist?.length || 0})</button><button onclick="window.app.switchTab('customer-profile')">My Address</button><button onclick="window.app.switchTab('customer-spending')">My Spending</button></div><div class="card-header-flex customer-section-title"><div><span class="card-title">Featured Products</span><div class="vendor-section-hint">Popular, in-stock picks available now.</div></div><button class="btn btn-secondary btn-sm" onclick="window.app.addFeaturedProductsToCart()">Add all to cart</button></div><div class="customer-recommendation-grid customer-featured-grid">${featuredProducts.map(customerProductCard).join("") || `<div class="vendor-empty-state">No featured products are available.</div>`}</div><div class="card-header-flex customer-section-title"><div><span class="card-title">Recommended for You</span><div class="vendor-section-hint">Suggestions generated from product and transaction data.</div></div></div><div class="customer-recommendation-grid">${dashboard.recommendations.map(customerProductCard).join("")}</div>`;
+}
+
+function getVendorSalesGoals() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEYS.vendorSalesGoals) || "{}"); } catch { return {}; }
+}
+
+function renderVendorSalesGoal(vendor, revenue) {
+  const input = byId("vendor-sales-goal-input");
+  const progress = byId("vendor-sales-goal-progress");
+  if (!input || !progress) return;
+  const goal = Number(getVendorSalesGoals()[vendor.id] || Math.max(10000, Math.ceil(revenue / 1000) * 1500));
+  const percent = Math.min((revenue / goal) * 100, 100);
+  input.value = goal;
+  byId("vendor-sales-goal-actual").textContent = currency.format(revenue);
+  byId("vendor-sales-goal-copy").textContent = `of ${currency.format(goal)} goal · ${percent.toFixed(0)}% achieved`;
+  progress.style.width = `${percent}%`;
+  const status = byId("vendor-sales-goal-status");
+  status.textContent = percent >= 100 ? "Goal achieved" : percent >= 70 ? "On track" : "Needs attention";
+  status.className = `badge ${percent >= 70 ? "badge-approved" : "badge-pending"}`;
+  byId("vendor-export-summary").textContent = `${state.transactions.filter((transaction) => transaction.vendorId === vendor.id).length} transactions and ${state.products.filter((product) => product.vendorId === vendor.id).length} products included.`;
+}
+
+function getReorderSettings() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEYS.reorderSettings) || "{}"); } catch { return {}; }
+}
+
+function renderReorderNotifications(vendor) {
+  const target = byId("vendor-reorder-notifications");
+  if (!target) return;
+  const threshold = Number(getReorderSettings()[vendor.id] || 20);
+  const products = state.products.filter((product) => product.vendorId === vendor.id && Number(product.stock || 0) <= threshold);
+  target.innerHTML = `<div class="card-header-flex"><div><span class="card-title">Reorder Notifications</span><div class="vendor-section-hint">Get notified when product stock reaches your threshold.</div></div><form class="reorder-threshold-form" onsubmit="window.app.saveReorderThreshold(event)"><label>Threshold <input id="vendor-reorder-threshold" type="number" min="1" value="${threshold}"></label><button class="btn btn-secondary btn-sm" type="submit">Save</button></form></div>${products.length ? `<div class="reorder-notification-list">${products.map((product) => `<div><strong>${escapeHtml(product.name)}</strong><span>${product.stock} in stock — reorder recommended</span></div>`).join("")}</div>` : `<div class="vendor-empty-state">All product stock is above your reorder threshold.</div>`}`;
+}
+
+function saveReorderThreshold(event) {
+  event.preventDefault();
+  const vendor = state.vendors.find((item) => item.id === state.currentVendorId);
+  const threshold = Number(byId("vendor-reorder-threshold")?.value);
+  if (!vendor || !Number.isInteger(threshold) || threshold < 1) return showToast("Enter a whole-number threshold of at least 1.", "error");
+  const settings = getReorderSettings();
+  settings[vendor.id] = threshold;
+  localStorage.setItem(STORE_KEYS.reorderSettings, JSON.stringify(settings));
+  renderReorderNotifications(vendor);
+  showToast("Reorder notification threshold saved.", "success");
+}
+
+async function updateOrderStatus(transactionId, status) {
+  const transaction = state.transactions.find((item) => item.transactionId === transactionId);
+  if (!transaction) return showToast("Order not found.", "error");
+  const previousStatus = transaction.status;
+  transaction.status = status;
+  storage.save();
+  renderVendorViews();
+  try {
+    const response = await fetch(`/api/transactions/${encodeURIComponent(transactionId)}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+    if (!response.ok) throw new Error("Order update failed");
+    const updated = await response.json();
+    transaction.status = updated.status;
+  } catch (error) {
+    console.warn("Order status was saved locally but could not be synced to the API.", error);
+    showToast(`Order ${transactionId} marked ${status} and saved locally.`, "success");
+    return;
+  }
+  showToast(`Order ${transactionId} marked ${status}.`, "success");
+}
+
+function saveVendorSalesGoal(event) {
+  event.preventDefault();
+  const vendor = state.vendors.find((item) => item.id === state.currentVendorId);
+  const amount = Number(byId("vendor-sales-goal-input")?.value);
+  if (!vendor || !Number.isFinite(amount) || amount <= 0) return showToast("Enter a sales goal greater than zero.", "error");
+  const goals = getVendorSalesGoals();
+  goals[vendor.id] = amount;
+  localStorage.setItem(STORE_KEYS.vendorSalesGoals, JSON.stringify(goals));
+  const revenue = state.transactions.filter((transaction) => transaction.vendorId === vendor.id).reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0);
+  renderVendorSalesGoal(vendor, revenue);
+  showToast("Monthly sales goal saved.", "success");
+}
+
+function exportVendorReport() {
+  const vendor = state.vendors.find((item) => item.id === state.currentVendorId);
+  if (!vendor) return showToast("Select a vendor before exporting a report.", "error");
+  const productById = new Map(state.products.map((product) => [product.id, product]));
+  const transactions = state.transactions.filter((transaction) => transaction.vendorId === vendor.id);
+  const totalRevenue = transactions.reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0);
+  const rows = [["ShopSense Vendor Report"], ["Vendor", vendor.businessName], ["Generated", new Date().toLocaleDateString()], ["Sales revenue", totalRevenue], [], ["Transaction ID", "Date", "Product", "Quantity", "Amount"]];
+  transactions.forEach((transaction) => rows.push([transaction.transactionId, formatDate(transaction.date), productById.get(transaction.productId)?.name || transaction.productId, transaction.quantity, transaction.totalAmount]));
+  rows.push([], ["Product", "Category", "SKU", "Stock", "Price"]);
+  state.products.filter((product) => product.vendorId === vendor.id).forEach((product) => rows.push([product.name, product.category, product.sku, product.stock, product.price]));
+  const csv = rows.map((row) => row.map((value) => `"${String(value ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  link.download = `${vendor.businessName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-report.csv`;
+  link.click();
+  URL.revokeObjectURL(link.href);
+  showToast("Vendor report exported as CSV.", "success");
 }
 
 function renderCustomerSpending() {
@@ -771,10 +864,8 @@ function renderFilteredProducts(products) {
   }
   
   const productsHtml = products.map(product => {
-    // Calculate rating (simulated)
-    const rating = (Math.random() * 2 + 3).toFixed(1); // 3.0 to 5.0
-    const reviewCount = Math.floor(Math.random() * 1000) + 10;
-    const stars = Math.round(parseFloat(rating));
+    const reviewSummary = getReviewSummary(product.id);
+    const stars = Math.round(reviewSummary.rating);
     
     return `
       <div class="amazon-product-card">
@@ -787,7 +878,7 @@ function renderFilteredProducts(products) {
             <div class="stars">
               ${Array(5).fill(0).map((_, i) => `<span class="${i < stars ? 'filled' : ''}">★</span>`).join('')}
             </div>
-            <span class="review-count">${reviewCount}</span>
+            <span class="review-count">${reviewSummary.count ? `${reviewSummary.rating.toFixed(1)} (${reviewSummary.count})` : "No reviews yet"}</span>
           </div>
           <div class="price-section">
             <span class="price">${currency.format(product.price)}</span>
@@ -1016,6 +1107,9 @@ function renderCustomerTransactions() {
             <h4>${product ? escapeHtml(product.name) : 'Unknown Product'}</h4>
             <p>Sold by: ${vendor ? escapeHtml(vendor.businessName) : 'Unknown Vendor'}</p>
             <p>Quantity: ${tx.quantity} | Total: ${currency.format(tx.totalAmount)} | <span class="badge ${tx.status === "cancelled" ? "badge-suspended" : "badge-approved"}">${escapeHtml(tx.status || "delivered")}</span></p>
+            <div class="order-actions"><button class="btn btn-secondary btn-sm" onclick="window.app.showOrderTracking('${tx.transactionId}')">Track order</button><button class="btn btn-secondary btn-sm" onclick="window.app.downloadInvoice('${tx.transactionId}')">Download invoice</button>${tx.status === "delivered" ? `<button class="btn btn-primary btn-sm" onclick="window.app.openReviewForm('${tx.transactionId}')">Rate & review</button>` : ""}</div>
+            <div id="tracking-${tx.transactionId}" class="order-tracking" hidden></div>
+            <div id="review-${tx.transactionId}" class="review-form" hidden></div>
           </div>
         </div>
       </div>
@@ -1157,6 +1251,66 @@ function renderAdminDashboard() {
   byId("admin-low-stock-tbody").innerHTML = lowStockProducts.length
     ? lowStockProducts.map((product) => `<tr><td><strong>${escapeHtml(product.name)}</strong><br><span style="color:var(--text-dim);font-size:.78rem;">${product.id}</span></td><td>${escapeHtml(product.vendorName)}</td><td>${escapeHtml(product.category)}</td><td>${product.stock}</td><td>${badge(product.stockStatus === "Out of stock" ? "out_of_stock" : "pending")}</td></tr>`).join("")
     : `<tr><td colspan="5" style="color:var(--text-muted);">No low-stock products.</td></tr>`;
+}
+
+function getReviews() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEYS.reviews) || "[]"); } catch { return []; }
+}
+
+function getReviewSummary(productId) {
+  const reviews = getReviews().filter((review) => review.productId === productId);
+  return { count: reviews.length, rating: reviews.length ? reviews.reduce((sum, review) => sum + Number(review.rating), 0) / reviews.length : 0 };
+}
+
+function orderTrackingSteps(status) {
+  const steps = ["processing", "shipped", "delivered"];
+  const normalized = String(status || "processing").toLowerCase();
+  const active = normalized === "cancelled" ? -1 : Math.max(0, steps.indexOf(normalized));
+  return normalized === "cancelled" ? `<span class="tracking-cancelled">This order was cancelled.</span>` : steps.map((step, index) => `<span class="${index <= active ? "complete" : ""}">${index < active ? "✓" : index + 1} ${step}</span>`).join("");
+}
+
+function showOrderTracking(transactionId) {
+  const transaction = state.transactions.find((item) => item.transactionId === transactionId);
+  const target = byId(`tracking-${transactionId}`);
+  if (!transaction || !target) return;
+  target.hidden = !target.hidden;
+  target.innerHTML = `<strong>Order tracking</strong><div class="tracking-steps">${orderTrackingSteps(transaction.status)}</div>`;
+}
+
+function downloadInvoice(transactionId) {
+  const transaction = state.transactions.find((item) => item.transactionId === transactionId);
+  if (!transaction) return showToast("Order not found.", "error");
+  const product = state.products.find((item) => item.id === transaction.productId);
+  const vendor = state.vendors.find((item) => item.id === transaction.vendorId);
+  const customer = state.customers.find((item) => item.id === transaction.customerId);
+  const documentHtml = `<!doctype html><title>Invoice ${transactionId}</title><style>body{font-family:Arial;margin:48px;color:#172554}table{width:100%;border-collapse:collapse;margin-top:28px}td,th{border-bottom:1px solid #cbd5e1;padding:12px;text-align:left}.total{font-size:20px;font-weight:bold;text-align:right;margin-top:24px}</style><h1>ShopSense Invoice</h1><p><b>Invoice:</b> ${escapeHtml(transactionId)}<br><b>Date:</b> ${escapeHtml(formatDate(transaction.date))}<br><b>Seller:</b> ${escapeHtml(vendor?.businessName || transaction.vendorId)}<br><b>Customer:</b> ${escapeHtml(customer?.name || "Marketplace customer")}</p><table><thead><tr><th>Item</th><th>Quantity</th><th>Amount</th></tr></thead><tbody><tr><td>${escapeHtml(product?.name || transaction.productId)}</td><td>${transaction.quantity}</td><td>${currency.format(transaction.totalAmount)}</td></tr></tbody></table><p class="total">Total: ${currency.format(transaction.totalAmount)}</p>`;
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(new Blob([documentHtml], { type: "text/html;charset=utf-8" }));
+  link.download = `shopsense-invoice-${transactionId}.html`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 0);
+  showToast("Invoice downloaded.", "success");
+}
+
+function openReviewForm(transactionId) {
+  const transaction = state.transactions.find((item) => item.transactionId === transactionId);
+  const target = byId(`review-${transactionId}`);
+  if (!transaction || !target) return;
+  const saved = getReviews().find((review) => review.transactionId === transactionId);
+  target.hidden = !target.hidden;
+  target.innerHTML = `<form onsubmit="window.app.saveReview(event, '${transactionId}')"><label>Rating <select name="rating"><option value="5" ${saved?.rating === 5 ? "selected" : ""}>5 — Excellent</option><option value="4" ${saved?.rating === 4 ? "selected" : ""}>4 — Good</option><option value="3" ${saved?.rating === 3 ? "selected" : ""}>3 — Average</option><option value="2" ${saved?.rating === 2 ? "selected" : ""}>2 — Poor</option><option value="1" ${saved?.rating === 1 ? "selected" : ""}>1 — Very poor</option></select></label><label>Review<textarea name="comment" maxlength="500" placeholder="Share your experience">${escapeHtml(saved?.comment || "")}</textarea></label><button class="btn btn-primary btn-sm" type="submit">Save review</button></form>`;
+}
+
+function saveReview(event, transactionId) {
+  event.preventDefault();
+  const transaction = state.transactions.find((item) => item.transactionId === transactionId);
+  if (!transaction || transaction.status !== "delivered") return showToast("Reviews can be submitted after delivery.", "error");
+  const reviews = getReviews().filter((review) => review.transactionId !== transactionId);
+  reviews.push({ transactionId, productId: transaction.productId, customerId: state.selectedCustomerId, rating: Number(new FormData(event.target).get("rating")), comment: String(new FormData(event.target).get("comment") || "").trim(), date: new Date().toISOString() });
+  localStorage.setItem(STORE_KEYS.reviews, JSON.stringify(reviews));
+  renderCustomerTransactions();
+  renderCustomerProducts();
+  showToast("Your review was saved. Thank you!", "success");
 }
 
 function renderAdminCategories() {
@@ -1578,6 +1732,7 @@ function renderVendorViews() {
     <div class="glass-card vendor-overview-card"><span class="vendor-overview-icon status">✓</span><div><span class="metric-label">Status</span><span class="metric-value overview-status">${escapeHtml(getVendorStatus(vendor))}</span><span class="vendor-overview-detail">Vendor account</span></div></div>
     <div class="glass-card vendor-overview-card"><span class="vendor-overview-icon verified">★</span><div><span class="metric-label">Verification</span><span class="metric-value overview-status">${escapeHtml(vendor.verificationStatus)}</span><span class="vendor-overview-detail">Account status</span></div></div>
   `;
+  renderVendorSalesGoal(vendor, summary.revenue);
 
   byId("v-profile-reg").textContent = vendor.registrationNumber;
   byId("v-profile-contact").textContent = vendor.contactPerson;
@@ -1677,7 +1832,7 @@ function renderVendorDashboardDetails(vendor, liveDashboard) {
   const empty = (message) => `<div class="vendor-empty-state">${message}</div>`;
 
   const transactionsHtml = dashboard.recentTransactions?.length
-    ? dashboard.recentTransactions.map((transaction) => `<div class="vendor-list-row"><div><strong>${escapeHtml(transaction.productName)}</strong><span>${escapeHtml(transaction.transactionId)} · ${formatDate(transaction.date)}</span></div><strong>${currency.format(transaction.totalAmount)}</strong></div>`).join("")
+    ? dashboard.recentTransactions.map((transaction) => `<div class="vendor-list-row vendor-order-row"><div><strong>${escapeHtml(transaction.productName)}</strong><span>${escapeHtml(transaction.transactionId)} · ${formatDate(transaction.date)}</span><span class="vendor-tracking-steps">${orderTrackingSteps(transaction.status)}</span></div><div><select aria-label="Order status" onchange="window.app.updateOrderStatus('${transaction.transactionId}', this.value)"><option value="processing" ${transaction.status === "processing" ? "selected" : ""}>Processing</option><option value="shipped" ${transaction.status === "shipped" ? "selected" : ""}>Shipped</option><option value="delivered" ${transaction.status === "delivered" ? "selected" : ""}>Delivered</option><option value="cancelled" ${transaction.status === "cancelled" ? "selected" : ""}>Cancelled</option></select><button class="btn btn-secondary btn-sm" onclick="window.app.downloadInvoice('${transaction.transactionId}')">Invoice</button></div></div>`).join("")
     : empty("No transactions have been recorded yet.");
   const topProductsHtml = dashboard.topProducts?.length
     ? dashboard.topProducts.map((product, index) => `<div class="vendor-list-row"><div><span class="vendor-rank">#${index + 1}</span><strong>${escapeHtml(product.name)}</strong><span>${product.unitsSold} units sold</span></div><strong>${currency.format(product.revenue)}</strong></div>`).join("")
@@ -1690,6 +1845,7 @@ function renderVendorDashboardDetails(vendor, liveDashboard) {
   setContent("vendor-top-products", topProductsHtml);
   setContent("vendor-inventory-alerts", alertsHtml);
   setContent("vendor-alerts-list", alertsHtml);
+  renderReorderNotifications(vendor);
 
   const salesAnalytics = dashboard.salesAnalytics;
   const salesMetrics = byId("vendor-sales-analytics-metrics");
@@ -2122,12 +2278,20 @@ function init() {
 
   state.vendors = storage.load(STORE_KEYS.vendors, INITIAL_VENDORS).map((vendor) => ({
     ...vendor,
+    password: vendor.password || `vendor${String(vendor.id || "").replace("VND-", "")}`,
     commission: vendor.commission ?? vendor.commissionStructure?.rate ?? 10,
     status: vendor.status || normalizeStatus(vendor.operationalStatus),
     createdAt: vendor.createdAt || vendor.createdDate
   }));
   state.products = storage.load(STORE_KEYS.products, INITIAL_PRODUCTS);
-  state.customers = storage.load(STORE_KEYS.customers, INITIAL_CUSTOMERS);
+  state.customers = storage.load(STORE_KEYS.customers, INITIAL_CUSTOMERS).map((customer) => {
+    const accountNumber = String(customer.id || "").replace("CUST-", "").padStart(3, "0");
+    return {
+      ...customer,
+      email: customer.email || `${customer.name.toLowerCase().replace(/\s+/g, ".")}@shopsense.com`,
+      password: customer.password || `customer${accountNumber}`
+    };
+  });
   state.transactions = storage.load(STORE_KEYS.transactions, INITIAL_TRANSACTIONS);
 
   byId("ob-categories-input")?.addEventListener("keydown", (event) => {
@@ -2138,6 +2302,7 @@ function init() {
   });
 
   renderAll();
+  backend.checkRememberedLogin();
   loadRevenueAnalytics();
 }
 
@@ -2164,9 +2329,9 @@ window.addEventListener("popstate", (event) => {
 window.app = {
   switchTab,
   handleRoleChange,
-  enterAdminPortal,
-  enterVendorPortal,
-  enterCustomerPortal,
+  enterAdminPortal: backend.enterAdminPortal,
+  enterVendorPortal: backend.enterVendorPortal,
+  enterCustomerPortal: backend.enterCustomerPortal,
   showLoginForm: backend.showLoginForm,
   showRoleSelection: backend.showRoleSelection,
   processLogin: backend.processLogin,
@@ -2175,6 +2340,14 @@ window.app = {
   openCustomerSearch,
   addToCart,
   addFeaturedProductsToCart,
+  showOrderTracking,
+  downloadInvoice,
+  openReviewForm,
+  saveReview,
+  saveVendorSalesGoal,
+  exportVendorReport,
+  saveReorderThreshold,
+  updateOrderStatus,
   addToWishlist,
   updateCartQuantity,
   removeFromCart,
@@ -2183,6 +2356,10 @@ window.app = {
     logout() {
       state.currentRole = null;
       state.currentVendorId = null;
+      localStorage.removeItem("rememberedEmail");
+      localStorage.removeItem("rememberedRole");
+      localStorage.removeItem("rememberedPassword");
+      localStorage.removeItem("rememberedCustomerId");
       byId("app-shell").hidden = true;
       byId("login-screen").hidden = false;
       byId("login-email").value = "";

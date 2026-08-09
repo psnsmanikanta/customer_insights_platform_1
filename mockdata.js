@@ -6,6 +6,7 @@ const INITIAL_VENDORS = [
     address: "100 Innovation Way,mumbai,india",
     contactPerson: "Sarah Jenkins",
     email: "sarah.j@novatech.io",
+    password: "vendor8392",
     phone: "+91 987654320",
     categories: ["Electronics", "Computers", "Accessories"],
     commissionStructure: {
@@ -41,6 +42,7 @@ const INITIAL_VENDORS = [
     address: "45 Green street,delhi 666898",
     contactPerson: "Ravi Singh",
     email: "m.chen@ecostyle.com",
+    password: "vendor4721",
     phone: "+91 9876546548",
     categories: ["Home & Kitchen", "Furniture", "Eco-Friendly"],
     commissionStructure: {
@@ -76,6 +78,7 @@ const INITIAL_VENDORS = [
     address: "700 Performance Nagpur, India, TX 78701",
     contactPerson: "Damian Lopez",
     email: "vendor@apexathletics.net",
+    password: "vendor1054",
     phone: "+91 7876556760",
     categories: ["Sports & Outdoors", "Apparel"],
     commissionStructure: {
@@ -111,6 +114,7 @@ const INITIAL_VENDORS = [
     address: "88 Luxury Lane, Mumbai, India, NY 10001",
     contactPerson: "Elena Rostova",
     email: "elena@velvetbloom.co",
+    password: "vendor6209",
     phone: "+91 9876546548",
     categories: ["Beauty & Personal Care", "Health"],
     commissionStructure: {
@@ -145,6 +149,7 @@ const INITIAL_VENDORS = [
     address: "12 Cyber Tower, Bangalore, India",
     contactPerson: "Priya Nair",
     email: "priya@bytebazaar.in",
+    password: "vendor7324",
     phone: "+91 9876512345",
     categories: ["Electronics", "Gadgets"],
     commissionStructure: {
@@ -179,6 +184,7 @@ const INITIAL_VENDORS = [
     address: "99 Fashion Avenue, Chennai, India",
     contactPerson: "Meera Kapoor",
     email: "meera@stylenest.in",
+    password: "vendor8843",
     phone: "+91 9876578901",
     categories: ["Apparel", "Lifestyle"],
     commissionStructure: {
@@ -213,6 +219,7 @@ const INITIAL_VENDORS = [
     address: "21 Market Street, Pune, India",
     contactPerson: "Arjun Patel",
     email: "arjun@urbankitchen.co",
+    password: "vendor5517",
     phone: "+91 9876594321",
     categories: ["Home & Kitchen", "Cookware"],
     commissionStructure: {
@@ -298,12 +305,12 @@ const INITIAL_TRANSACTIONS = [
 ];
 
 const INITIAL_CUSTOMERS = [
-  { id: "CUST-001", name: "Maya Kaur", firstPurchaseDate: "2026-03-22T11:30:00Z", lastPurchaseDate: "2026-07-15T15:45:00Z", lifetimeValue: 3120, orderCount: 14 },
-  { id: "CUST-002", name: "Noah Patel", firstPurchaseDate: "2026-07-05T09:10:00Z", lastPurchaseDate: "2026-07-05T09:10:00Z", lifetimeValue: 89, orderCount: 1 },
-  { id: "CUST-003", name: "Priya Jain", firstPurchaseDate: "2025-11-18T13:25:00Z", lastPurchaseDate: "2026-07-12T18:20:00Z", lifetimeValue: 670, orderCount: 8 },
-  { id: "CUST-004", name: "Arjun Mehta", firstPurchaseDate: "2026-07-12T17:40:00Z", lastPurchaseDate: "2026-07-12T17:40:00Z", lifetimeValue: 54, orderCount: 1 },
-  { id: "CUST-005", name: "Sara Mukherjee", firstPurchaseDate: "2026-02-14T14:00:00Z", lastPurchaseDate: "2026-06-28T10:35:00Z", lifetimeValue: 1420, orderCount: 11 },
-  { id: "CUST-006", name: "Karan Verma", firstPurchaseDate: "2026-04-08T08:20:00Z", lastPurchaseDate: "2026-07-18T12:30:00Z", lifetimeValue: 820, orderCount: 6 },
-  { id: "CUST-007", name: "Aisha Khan", firstPurchaseDate: "2025-12-05T12:50:00Z", lastPurchaseDate: "2026-02-25T14:15:00Z", lifetimeValue: 190, orderCount: 3 },
-  { id: "CUST-008", name: "Riya Sharma", firstPurchaseDate: "2026-07-16T10:50:00Z", lastPurchaseDate: "2026-07-16T10:50:00Z", lifetimeValue: 38, orderCount: 1 }
+  { id: "CUST-001", name: "Maya Kaur", email: "maya.kaur@shopsense.com", password: "customer001", firstPurchaseDate: "2026-03-22T11:30:00Z", lastPurchaseDate: "2026-07-15T15:45:00Z", lifetimeValue: 3120, orderCount: 14 },
+  { id: "CUST-002", name: "Noah Patel", email: "noah.patel@shopsense.com", password: "customer002", firstPurchaseDate: "2026-07-05T09:10:00Z", lastPurchaseDate: "2026-07-05T09:10:00Z", lifetimeValue: 89, orderCount: 1 },
+  { id: "CUST-003", name: "Priya Jain", email: "priya.jain@shopsense.com", password: "customer003", firstPurchaseDate: "2025-11-18T13:25:00Z", lastPurchaseDate: "2026-07-12T18:20:00Z", lifetimeValue: 670, orderCount: 8 },
+  { id: "CUST-004", name: "Arjun Mehta", email: "arjun.mehta@shopsense.com", password: "customer004", firstPurchaseDate: "2026-07-12T17:40:00Z", lastPurchaseDate: "2026-07-12T17:40:00Z", lifetimeValue: 54, orderCount: 1 },
+  { id: "CUST-005", name: "Sara Mukherjee", email: "sara.mukherjee@shopsense.com", password: "customer005", firstPurchaseDate: "2026-02-14T14:00:00Z", lastPurchaseDate: "2026-06-28T10:35:00Z", lifetimeValue: 1420, orderCount: 11 },
+  { id: "CUST-006", name: "Karan Verma", email: "karan.verma@shopsense.com", password: "customer006", firstPurchaseDate: "2026-04-08T08:20:00Z", lastPurchaseDate: "2026-07-18T12:30:00Z", lifetimeValue: 820, orderCount: 6 },
+  { id: "CUST-007", name: "Aisha Khan", email: "aisha.khan@shopsense.com", password: "customer007", firstPurchaseDate: "2025-12-05T12:50:00Z", lastPurchaseDate: "2026-02-25T14:15:00Z", lifetimeValue: 190, orderCount: 3 },
+  { id: "CUST-008", name: "Riya Sharma", email: "riya.sharma@shopsense.com", password: "customer008", firstPurchaseDate: "2026-07-16T10:50:00Z", lastPurchaseDate: "2026-07-16T10:50:00Z", lifetimeValue: 38, orderCount: 1 }
 ];

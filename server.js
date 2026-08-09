@@ -566,6 +566,18 @@ async function handleApi(request, response, url) {
       return sendJson(response, 201, newTransaction);
     }
 
+    const transactionStatusMatch = url.pathname.match(/^\/api\/transactions\/([^/]+)\/status$/);
+    if (request.method === "PATCH" && transactionStatusMatch) {
+      const body = await readBody(request);
+      const allowedStatuses = new Set(["processing", "shipped", "delivered", "cancelled"]);
+      const status = String(body.status || "").toLowerCase();
+      const transaction = transactions.find((item) => item.transactionId === decodeURIComponent(transactionStatusMatch[1]));
+      if (!transaction) return sendJson(response, 404, { error: "Transaction not found" });
+      if (!allowedStatuses.has(status)) return sendJson(response, 400, { error: "Invalid order status" });
+      transaction.status = status;
+      return sendJson(response, 200, transaction);
+    }
+
     if (request.method === "POST" && url.pathname === "/api/orders") {
       const body = await readBody(request);
       const { customerId, productId, quantity, totalAmount } = body;

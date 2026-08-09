@@ -9,46 +9,47 @@
 <body>
   <div class="toast-container" id="toast-container"></div>
   <section class="login-screen" id="login-screen" aria-labelledby="login-title">
+    <div class="login-orb login-orb-one" aria-hidden="true"></div>
+    <div class="login-orb login-orb-two" aria-hidden="true"></div>
     <div class="login-panel">
-      <div class="login-brand" aria-label="ShopSense">
-        <div class="brand-logo">S</div>
-        <span>SHOPSENSE</span>
-      </div>
-      <h1 id="login-title">Sign in to ShopSense</h1>
-      <p class="login-intro">Choose the workspace you want to access.</p>
-      <div class="login-role-grid">
-        <button class="login-role" type="button" onclick="window.app.enterAdminPortal()">
-          <span class="login-role-title">Admin Login</span>
-          <span class="login-role-copy">Manage marketplace operations</span>
-          <span class="login-role-action">Continue</span>
-        </button>
-        <button class="login-role" type="button" onclick="window.app.enterVendorPortal()">
-          <span class="login-role-title">Vendor Login</span>
-          <span class="login-role-copy">Manage your products and performance</span>
-          <span class="login-role-action">Continue</span>
-        </button>
-        <button class="login-role" type="button" onclick="window.app.enterCustomerPortal()">
-          <span class="login-role-title">Shop as Customer</span>
-          <span class="login-role-copy">Browse products without signing in</span>
-          <span class="login-role-action">Start Shopping</span>
-        </button>
-      </div>
-      <div id="login-form-container" style="display: none; animation: fadeIn 0.3s ease-out;">
-        <h2 id="login-form-title" class="login-form-title"></h2>
-        <div class="form-field">
-          <label for="login-email">Email Address</label>
-          <input type="email" id="login-email" placeholder="Enter your email">
+      <div class="login-card">
+        <div class="login-brand" aria-label="ShopSense">
+          <div class="login-brand-mark">S</div>
+          <span>ShopSense</span>
         </div>
-        <div class="form-field">
-          <label for="login-password">Password</label>
-          <input type="password" id="login-password" placeholder="Enter your password">
+        <h1 id="login-title">Welcome back</h1>
+        <p class="login-intro">Sign in to continue to your marketplace workspace.</p>
+        <div class="login-role-grid">
+          <button class="login-role" type="button" onclick="window.app.enterAdminPortal()">
+            <span class="login-role-icon">A</span><span><span class="login-role-title">Administrator</span><span class="login-role-copy">Marketplace operations</span></span><span class="login-role-action">›</span>
+          </button>
+          <button class="login-role" type="button" onclick="window.app.enterVendorPortal()">
+            <span class="login-role-icon">V</span><span><span class="login-role-title">Vendor</span><span class="login-role-copy">Catalog and performance</span></span><span class="login-role-action">›</span>
+          </button>
+          <button class="login-role" type="button" onclick="window.app.enterCustomerPortal()">
+            <span class="login-role-icon">C</span><span><span class="login-role-title">Customer</span><span class="login-role-copy">Orders and shopping</span></span><span class="login-role-action">›</span>
+          </button>
         </div>
-        <div class="form-options">
-          <label><input type="checkbox" id="remember-me"> Remember me</label>
+        <div id="login-form-container" style="display: none; animation: fadeIn 0.3s ease-out;">
+          <h2 id="login-form-title" class="login-form-title"></h2>
+          <p class="login-form-copy">Enter your account credentials to continue.</p>
+          <div class="form-field">
+            <label for="login-email">Email address</label>
+            <input type="email" id="login-email" autocomplete="email" placeholder="name@example.com">
+          </div>
+          <div class="form-field">
+            <label for="login-password">Password</label>
+            <input type="password" id="login-password" autocomplete="current-password" placeholder="Enter your password">
+          </div>
+          <div class="form-options">
+            <label><input type="checkbox" id="remember-me"> Remember this account on this device</label>
+          </div>
+          <div id="login-customer-note" class="info-message" style="display: none;">Use the email and password assigned to your customer account.</div>
+          <button class="btn btn-primary login-submit" onclick="window.app.processLogin()">Sign in</button>
+          <button class="login-back-button" onclick="window.app.showRoleSelection()">← Choose a different account type</button>
+          <div id="login-error-message" class="error-message" style="display: none;"></div>
         </div>
-        <button class="btn btn-primary" onclick="window.app.processLogin()" style="width: 100%;">Sign In</button>
-        <button class="btn btn-secondary" onclick="window.app.showRoleSelection()" style="width: 100%; margin-top: 10px;">Back to Role Selection</button>
-        <div id="login-error-message" class="error-message" style="display: none;"></div>
+        <p class="login-security-note">Protected workspace · Your saved sign-in stays on this browser only.</p>
       </div>
     </div>
   </section>
@@ -950,6 +951,30 @@
             <!-- Database-backed overview cards render here -->
           </div>
 
+          <div class="vendor-tools-grid">
+            <section class="glass-card vendor-sales-goal-card" aria-labelledby="vendor-sales-goal-title">
+              <div class="card-header-flex">
+                <div><span class="card-title" id="vendor-sales-goal-title">Monthly Sales Goal</span><div class="vendor-section-hint">Set a target and track progress against completed sales.</div></div>
+                <span class="badge badge-approved" id="vendor-sales-goal-status">On track</span>
+              </div>
+              <div class="vendor-goal-progress"><div id="vendor-sales-goal-progress"></div></div>
+              <div class="vendor-goal-summary"><strong id="vendor-sales-goal-actual">₹0</strong><span id="vendor-sales-goal-copy">of ₹0 goal</span></div>
+              <form class="vendor-goal-form" onsubmit="window.app.saveVendorSalesGoal(event)">
+                <label for="vendor-sales-goal-input">Goal amount</label>
+                <input id="vendor-sales-goal-input" type="number" min="1" step="100" inputmode="numeric" required>
+                <button class="btn btn-secondary btn-sm" type="submit">Save goal</button>
+              </form>
+            </section>
+            <section class="glass-card vendor-export-card" aria-labelledby="vendor-export-title">
+              <span class="card-title" id="vendor-export-title">Export Reports</span>
+              <p class="vendor-section-hint">Download a CSV summary of your sales, products, and current inventory.</p>
+              <button class="btn btn-primary" type="button" onclick="window.app.exportVendorReport()">Export vendor report</button>
+              <small id="vendor-export-summary">Includes all recorded transactions.</small>
+            </section>
+          </div>
+
+          <section class="glass-card vendor-reorder-card" id="vendor-reorder-notifications" aria-label="Reorder notifications"></section>
+
           <div class="glass-card vendor-quick-actions">
             <div class="card-header-flex"><span class="card-title">Quick Actions</span></div>
             <div class="vendor-action-grid">
@@ -960,8 +985,8 @@
             </div>
           </div>
           <div class="vendor-improvement-highlight">
-            <div><span class="card-title">Suggested Vendor Enhancements</span><div class="vendor-section-hint">These highlighted areas can be added next to improve this vendor workspace.</div></div>
-            <div class="vendor-improvement-actions"><button type="button" onclick="window.app.switchTab('vendor-catalog')">Product editing &amp; image updates</button><button type="button" onclick="window.app.switchTab('vendor-transactions')">Invoices &amp; shipment tracking</button><button type="button" onclick="window.app.switchTab('vendor-dashboard')">Sales goals &amp; export reports</button></div>
+            <div><span class="card-title">Suggested Vendor Enhancements</span><div class="vendor-section-hint">Keep your catalog current and monitor your latest business activity.</div></div>
+            <div class="vendor-improvement-actions"><button type="button" onclick="window.app.switchTab('vendor-catalog')">Product editing &amp; image updates</button><button type="button" onclick="window.app.switchTab('vendor-transactions')">Invoices &amp; shipment tracking</button><button type="button" onclick="window.app.exportVendorReport()">Export latest report</button></div>
           </div>
 
           <div class="grid-cols-2">
