@@ -242,17 +242,25 @@ const INITIAL_VENDORS = [
   }
 ];
 const INITIAL_PRODUCTS = [
-  { id: "PROD-101", vendorId: "VND-8392", name: "SuperDrive Extreme 2TB SSD", category: "Electronics", price: 189.99, sku: "NT-SD-2TB-SSD", stock: 45, status: "active" },
-  { id: "PROD-102", vendorId: "VND-8392", name: "ZenBook Pro 15.6 Inch", category: "Computers", price: 1299.00, sku: "NT-ZB-PRO15", stock: 12, status: "active" },
-  { id: "PROD-103", vendorId: "VND-8392", name: "USB-C Multi-Port Hub (8-in-1)", category: "Accessories", price: 49.99, sku: "NT-UC-HUB8", stock: 150, status: "active" },
-  { id: "PROD-201", vendorId: "VND-4721", name: "Handcrafted Bamboo Cutting Board Set", category: "Home & Kitchen", price: 34.50, sku: "ES-BB-CBSET", stock: 85, status: "active" },
-  { id: "PROD-202", vendorId: "VND-4721", name: "Organic Linen Bed Sheet Set (Queen)", category: "Home & Kitchen", price: 120.00, sku: "ES-OL-SHEETQ", stock: 22, status: "active" },
-  { id: "PROD-203", vendorId: "VND-4721", name: "Ergonomic Reclaimed Wood Desk", category: "Furniture", price: 450.00, sku: "ES-ER-RWDESK", stock: 5, status: "active" },
-  { id: "PROD-301", vendorId: "VND-1054", name: "Pro-Series Compression Socks", category: "Apparel", price: 19.99, sku: "AA-PS-CSOCK", stock: 500, status: "draft" },
-  { id: "PROD-401", vendorId: "VND-6209", name: "Hydrating Rosewater Facial Mist", category: "Beauty & Personal Care", price: 24.00, sku: "VB-HR-MIST", stock: 0, status: "out_of_stock" },
-  { id: "PROD-501", vendorId: "VND-7324", name: "Wireless Noise-Canceling Earbuds", category: "Electronics", price: 69.99, sku: "BB-WN-EARBUD", stock: 60, status: "active" },
-  { id: "PROD-601", vendorId: "VND-8843", name: "Active Performance Tee", category: "Apparel", price: 39.99, sku: "SN-AP-TEE", stock: 120, status: "active" },
-  { id: "PROD-701", vendorId: "VND-5517", name: "Precision Ceramic Knife Set", category: "Home & Kitchen", price: 79.99, sku: "UK-CK-SET", stock: 30, status: "active" }
+  { id: "PROD-101", vendorId: "VND-8392", name: "SuperDrive Extreme 2TB SSD", category: "Electronics", price: 189.99, sku: "NT-SD-2TB-SSD", stock: 45, status: "active", imageUrl: "https://images.pexels.com/photos/812264/pexels-photo-812264.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-102", vendorId: "VND-8392", name: "ZenBook Pro 15.6 Inch", category: "Computers", price: 1299.00, sku: "NT-ZB-PRO15", stock: 12, status: "active", imageUrl: "https://images.pexels.com/photos/2047905/pexels-photo-2047905.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-103", vendorId: "VND-8392", name: "USB-C Multi-Port Hub (8-in-1)", category: "Accessories", price: 49.99, sku: "NT-UC-HUB8", stock: 150, status: "active", imageUrl: "https://images.pexels.com/photos/943096/pexels-photo-943096.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-201", vendorId: "VND-4721", name: "Handcrafted Bamboo Cutting Board Set", category: "Home & Kitchen", price: 34.50, sku: "ES-BB-CBSET", stock: 85, status: "active", imageUrl: "https://images.pexels.com/photos/361184/pexels-photo-361184.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-202", vendorId: "VND-4721", name: "Organic Linen Bed Sheet Set (Queen)", category: "Home & Kitchen", price: 120.00, sku: "ES-OL-SHEETQ", stock: 22, status: "active", imageUrl: "https://images.pexels.com/photos/1400349/pexels-photo-1400349.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-203", vendorId: "VND-4721", name: "Ergonomic Reclaimed Wood Desk", category: "Furniture", price: 450.00, sku: "ES-ER-RWDESK", stock: 5, status: "active", imageUrl: "https://images.pexels.com/photos/1148957/pexels-photo-1148957.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-301", vendorId: "VND-1054", name: "Pro-Series Compression Socks", category: "Apparel", price: 19.99, sku: "AA-PS-CSOCK", stock: 500, status: "draft", imageUrl: "https://images.pexels.com/photos/2529148/pexels-photo-2529148.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-401", vendorId: "VND-6209", name: "Hydrating Rosewater Facial Mist", category: "Beauty & Personal Care", price: 24.00, sku: "VB-HR-MIST", stock: 0, status: "out_of_stock", imageUrl: "https://images.pexels.com/photos/3018845/pexels-photo-3018845.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-501", vendorId: "VND-7324", name: "Wireless Noise-Canceling Earbuds", category: "Electronics", price: 69.99, sku: "BB-WN-EARBUD", stock: 60, status: "active", imageUrl: "https://images.pexels.com/photos/3780681/pexels-photo-3780681.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-601", vendorId: "VND-8843", name: "Active Performance Tee", category: "Apparel", price: 39.99, sku: "SN-AP-TEE", stock: 120, status: "active", imageUrl: "https://images.pexels.com/photos/1232459/pexels-photo-1232459.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-701", vendorId: "VND-5517", name: "Precision Ceramic Knife Set", category: "Home & Kitchen", price: 79.99, sku: "UK-CK-SET", stock: 30, status: "active", imageUrl: "https://images.pexels.com/photos/33545/sunrise-phu-quoc-island-ocean.jpg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" },
+  { id: "PROD-104", vendorId: "VND-8392", name: "Orbit Wireless Mechanical Keyboard", category: "Accessories", price: 89.99, sku: "NT-OW-MK87", stock: 18, status: "active", imageUrl: "https://images.unsplash.com/photo-1587829741301-dc798b83add3?auto=format&fit=crop&w=800&q=80" },
+  { id: "PROD-105", vendorId: "VND-8392", name: "ViewMax 27-inch QHD Monitor", category: "Computers", price: 329.00, sku: "NT-VM-27QHD", stock: 7, status: "active", imageUrl: "https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?auto=format&fit=crop&w=800&q=80" },
+  { id: "PROD-106", vendorId: "VND-8392", name: "PocketCharge 20K Power Bank", category: "Electronics", price: 39.99, sku: "NT-PC-20K", stock: 0, status: "out_of_stock", imageUrl: "https://images.unsplash.com/photo-1609592424824-7f13b95d5c93?auto=format&fit=crop&w=800&q=80" },
+  { id: "PROD-204", vendorId: "VND-4721", name: "Woven Cotton Storage Basket", category: "Home & Kitchen", price: 28.00, sku: "ES-WC-BASKET", stock: 44, status: "active", imageUrl: "https://images.unsplash.com/photo-1616486029423-aaa4789e8c9a?auto=format&fit=crop&w=800&q=80" },
+  { id: "PROD-205", vendorId: "VND-4721", name: "Minimalist Floor Lamp", category: "Furniture", price: 110.00, sku: "ES-MF-LAMP", stock: 14, status: "active", imageUrl: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=800&q=80" },
+  { id: "PROD-502", vendorId: "VND-7324", name: "Smart Fitness Watch", category: "Electronics", price: 149.99, sku: "BB-SF-WATCH", stock: 35, status: "active", imageUrl: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80" },
+  { id: "PROD-602", vendorId: "VND-8843", name: "Flex Training Shorts", category: "Apparel", price: 34.99, sku: "SN-FT-SHORT", stock: 16, status: "active", imageUrl: "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=800&q=80" },
+  { id: "PROD-702", vendorId: "VND-5517", name: "Acacia Wood Serving Tray", category: "Home & Kitchen", price: 42.00, sku: "UK-AW-TRAY", stock: 52, status: "active", imageUrl: "https://images.unsplash.com/photo-1546549032-9571cd6b27df?auto=format&fit=crop&w=800&q=80" }
 ];
 const INITIAL_TRANSACTIONS = [
   { transactionId: "TRN-001", vendorId: "VND-8392", productId: "PROD-101", quantity: 2, totalAmount: 379.98, date: "2026-07-10T10:00:00Z" },
@@ -261,7 +269,32 @@ const INITIAL_TRANSACTIONS = [
   { transactionId: "TRN-004", vendorId: "VND-4721", productId: "PROD-202", quantity: 3, totalAmount: 360.00, date: "2026-07-12T09:00:00Z" },
   { transactionId: "TRN-005", vendorId: "VND-7324", productId: "PROD-501", quantity: 4, totalAmount: 279.96, date: "2026-07-12T12:00:00Z" },
   { transactionId: "TRN-006", vendorId: "VND-8843", productId: "PROD-601", quantity: 2, totalAmount: 79.98, date: "2026-07-13T10:15:00Z" },
-  { transactionId: "TRN-007", vendorId: "VND-5517", productId: "PROD-701", quantity: 1, totalAmount: 24.99, date: "2026-07-13T14:45:00Z" }
+  { transactionId: "TRN-007", vendorId: "VND-5517", productId: "PROD-701", quantity: 1, totalAmount: 79.99, date: "2026-07-13T14:45:00Z" },
+  { transactionId: "TRN-008", vendorId: "VND-8392", productId: "PROD-103", quantity: 5, totalAmount: 249.95, date: "2026-07-15T09:20:00Z" },
+  { transactionId: "TRN-009", vendorId: "VND-8392", productId: "PROD-104", quantity: 2, totalAmount: 179.98, date: "2026-07-16T12:10:00Z" },
+  { transactionId: "TRN-010", vendorId: "VND-4721", productId: "PROD-203", quantity: 1, totalAmount: 450.00, date: "2026-07-16T15:40:00Z" },
+  { transactionId: "TRN-011", vendorId: "VND-7324", productId: "PROD-502", quantity: 3, totalAmount: 449.97, date: "2026-07-17T10:05:00Z" },
+  { transactionId: "TRN-012", vendorId: "VND-8843", productId: "PROD-602", quantity: 4, totalAmount: 139.96, date: "2026-07-17T13:25:00Z" },
+  { transactionId: "TRN-013", vendorId: "VND-5517", productId: "PROD-702", quantity: 2, totalAmount: 84.00, date: "2026-07-18T08:45:00Z" },
+  { transactionId: "TRN-014", vendorId: "VND-8392", productId: "PROD-105", quantity: 1, totalAmount: 329.00, date: "2026-07-18T11:30:00Z" },
+  { transactionId: "TRN-015", vendorId: "VND-4721", productId: "PROD-204", quantity: 6, totalAmount: 168.00, date: "2026-07-18T16:20:00Z" },
+  { transactionId: "TRN-016", vendorId: "VND-8392", productId: "PROD-101", quantity: 1, totalAmount: 189.99, date: "2026-07-19T09:15:00Z" },
+  { transactionId: "TRN-017", vendorId: "VND-7324", productId: "PROD-501", quantity: 2, totalAmount: 139.98, date: "2026-07-19T11:55:00Z" },
+  { transactionId: "TRN-018", vendorId: "VND-8843", productId: "PROD-601", quantity: 5, totalAmount: 199.95, date: "2026-07-20T10:20:00Z" },
+  { transactionId: "TRN-019", vendorId: "VND-4721", productId: "PROD-205", quantity: 2, totalAmount: 220.00, date: "2026-07-20T14:10:00Z" },
+  { transactionId: "TRN-020", vendorId: "VND-8392", productId: "PROD-104", quantity: 3, totalAmount: 269.97, date: "2026-07-21T09:40:00Z" },
+  { transactionId: "TRN-021", vendorId: "VND-5517", productId: "PROD-701", quantity: 2, totalAmount: 159.98, date: "2026-07-21T16:35:00Z" },
+  { transactionId: "TRN-022", vendorId: "VND-8392", productId: "PROD-102", quantity: 1, totalAmount: 1299.00, date: "2026-07-22T11:05:00Z" },
+  { transactionId: "TRN-023", vendorId: "VND-8392", productId: "PROD-104", quantity: 2, totalAmount: 179.98, date: "2026-07-23T09:20:00Z", customerId: "CUST-001", status: "delivered" },
+  { transactionId: "TRN-024", vendorId: "VND-8392", productId: "PROD-106", quantity: 1, totalAmount: 39.99, date: "2026-07-23T14:10:00Z", customerId: "CUST-002", status: "cancelled" },
+  { transactionId: "TRN-025", vendorId: "VND-4721", productId: "PROD-204", quantity: 2, totalAmount: 56.00, date: "2026-07-24T10:05:00Z", customerId: "CUST-003", status: "delivered" },
+  { transactionId: "TRN-026", vendorId: "VND-4721", productId: "PROD-205", quantity: 1, totalAmount: 110.00, date: "2026-07-24T16:25:00Z", customerId: "CUST-004", status: "cancelled" },
+  { transactionId: "TRN-027", vendorId: "VND-7324", productId: "PROD-502", quantity: 1, totalAmount: 149.99, date: "2026-07-25T11:40:00Z", customerId: "CUST-005", status: "delivered" },
+  { transactionId: "TRN-028", vendorId: "VND-8843", productId: "PROD-602", quantity: 2, totalAmount: 69.98, date: "2026-07-25T15:15:00Z", customerId: "CUST-006", status: "shipped" },
+  { transactionId: "TRN-029", vendorId: "VND-5517", productId: "PROD-702", quantity: 3, totalAmount: 126.00, date: "2026-07-26T08:50:00Z", customerId: "CUST-001", status: "delivered" },
+  { transactionId: "TRN-030", vendorId: "VND-8392", productId: "PROD-101", quantity: 1, totalAmount: 189.99, date: "2026-07-26T13:05:00Z", customerId: "CUST-007", status: "cancelled" },
+  { transactionId: "TRN-031", vendorId: "VND-8392", productId: "PROD-104", quantity: 1, totalAmount: 89.99, date: "2026-07-27T10:10:00Z", customerId: "CUST-008", status: "delivered" },
+  { transactionId: "TRN-032", vendorId: "VND-6209", productId: "PROD-401", quantity: 1, totalAmount: 24.00, date: "2026-07-27T17:30:00Z", customerId: "CUST-003", status: "cancelled" }
 ];
 
 const INITIAL_CUSTOMERS = [
@@ -273,4 +306,4 @@ const INITIAL_CUSTOMERS = [
   { id: "CUST-006", name: "Karan Verma", firstPurchaseDate: "2026-04-08T08:20:00Z", lastPurchaseDate: "2026-07-18T12:30:00Z", lifetimeValue: 820, orderCount: 6 },
   { id: "CUST-007", name: "Aisha Khan", firstPurchaseDate: "2025-12-05T12:50:00Z", lastPurchaseDate: "2026-02-25T14:15:00Z", lifetimeValue: 190, orderCount: 3 },
   { id: "CUST-008", name: "Riya Sharma", firstPurchaseDate: "2026-07-16T10:50:00Z", lastPurchaseDate: "2026-07-16T10:50:00Z", lifetimeValue: 38, orderCount: 1 }
-];
+];

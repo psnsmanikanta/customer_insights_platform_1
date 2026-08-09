@@ -56,6 +56,45 @@ test('GET /api/customers and /api/transactions return marketplace data', async (
   }
 });
 
+test('GET /api/vendors/:id/dashboard returns database-backed inventory summaries', async () => {
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+
+  try {
+    const response = await requestJson(`http://127.0.0.1:${port}/api/vendors/VND-8392/dashboard`);
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.body.vendor.id, 'VND-8392');
+    assert.equal(response.body.summary.totalProducts, 6);
+    assert.ok(response.body.summary.inventoryUnits > 0);
+    assert.ok(response.body.stockBreakdown['In stock'] > 0);
+    assert.ok(Array.isArray(response.body.recentTransactions));
+    assert.ok(Array.isArray(response.body.topProducts));
+    assert.ok(response.body.benchmark.rankedVendors > 0);
+    assert.equal(response.body.benchmark.vendorRevenueRank, 1);
+    assert.equal(response.body.benchmark.revenueDistribution.length, response.body.benchmark.rankedVendors);
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});
+
+test('GET /api/admin/dashboard returns live marketplace and low-stock summaries', async () => {
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const { port } = server.address();
+
+  try {
+    const response = await requestJson(`http://127.0.0.1:${port}/api/admin/dashboard`);
+    assert.equal(response.statusCode, 200);
+    assert.ok(response.body.summary.totalRevenue > 0);
+    assert.ok(response.body.summary.totalOrders > 0);
+    assert.ok(response.body.summary.totalProducts > 0);
+    assert.ok(response.body.lowStockProducts.some((product) => product.stock === 0));
+  } finally {
+    await new Promise((resolve, reject) => server.close((error) => (error ? reject(error) : resolve())));
+  }
+});
+
 test('GET /api/analytics/customer-behavior returns metrics and recommendations from stored data', async () => {
   const server = createServer();
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));

@@ -1,23 +1,90 @@
-function createChart(containerId, dataPoints, label) {
+function createPieChart(containerId, data, label) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  const width = 320;
-  const height = 120;
-  const max = Math.max(...dataPoints.map((item) => item.value), 1);
-  const svg = [`<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="display:block;">`];
-  const pointSpacing = width / (dataPoints.length + 1);
 
-  svg.push(`<polyline fill="none" stroke="#8b5cf6" stroke-width="3" points="${dataPoints.map((item, index) => `${(index + 1) * pointSpacing},${height - (item.value / max) * (height - 30) - 20}`).join(' ')}"></polyline>`);
-  dataPoints.forEach((item, index) => {
-    const x = (index + 1) * pointSpacing;
-    const y = height - (item.value / max) * (height - 30) - 20;
-    svg.push(`<circle cx="${x}" cy="${y}" r="5" fill="#a855f7"></circle>`);
-    svg.push(`<text x="${x}" y="${height - 5}" text-anchor="middle" font-size="10" fill="#94a3b8">${escapeHtml(item.label)}</text>`);
+  const width = 320;
+  const height = 220;
+  const radius = Math.min(width, height) / 2 - 20;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const colors = [
+    '#4f46e5', '#0ea5e9', '#f97316', '#14b8a6', '#facc15', '#ec4899', '#22c55e', '#e11d48'
+  ];
+
+  const total = data.reduce((sum, item) => sum + Number(item.value || 0), 0) || 1;
+
+  container.innerHTML = '';
+  const title = document.createElement('div');
+  title.style.fontSize = '0.95rem';
+  title.style.color = 'var(--text-main)';
+  title.style.marginBottom = '10px';
+  title.textContent = label;
+  container.appendChild(title);
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('width', width);
+  svg.setAttribute('height', height);
+  svg.style.display = 'block';
+  container.appendChild(svg);
+
+  let startAngle = 0;
+  data.forEach((item, index) => {
+    const value = Number(item.value || 0);
+    const sliceAngle = (value / total) * Math.PI * 2;
+    const endAngle = startAngle + sliceAngle;
+    const x1 = centerX + radius * Math.cos(startAngle);
+    const y1 = centerY + radius * Math.sin(startAngle);
+    const x2 = centerX + radius * Math.cos(endAngle);
+    const y2 = centerY + radius * Math.sin(endAngle);
+    const largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
+    const pathData = [
+      `M ${centerX} ${centerY}`,
+      `L ${x1} ${y1}`,
+      `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+      'Z'
+    ].join(' ');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', pathData);
+    path.setAttribute('fill', colors[index % colors.length]);
+    svg.appendChild(path);
+
+    startAngle = endAngle;
   });
 
-  svg.push(`</svg>`);
-  container.innerHTML = `<div style="font-size:0.95rem; color:var(--text-main); margin-bottom: 10px;">${escapeHtml(label)}</div>${svg.join('')}`;
+  const legend = document.createElement('div');
+  legend.style.display = 'flex';
+  legend.style.flexWrap = 'wrap';
+  legend.style.justifyContent = 'center';
+  legend.style.gap = '8px';
+  legend.style.marginTop = '10px';
+
+  data.forEach((item, index) => {
+    const labelRow = document.createElement('div');
+    labelRow.style.display = 'flex';
+    labelRow.style.alignItems = 'center';
+    labelRow.style.gap = '6px';
+    labelRow.style.fontSize = '0.78rem';
+    labelRow.style.color = 'var(--text-muted)';
+
+    const colorSwatch = document.createElement('span');
+    colorSwatch.style.width = '12px';
+    colorSwatch.style.height = '12px';
+    colorSwatch.style.background = colors[index % colors.length];
+    colorSwatch.style.borderRadius = '2px';
+    labelRow.appendChild(colorSwatch);
+
+    const labelText = document.createElement('span');
+    labelText.textContent = `${item.label}: ${Math.round((Number(item.value || 0) / total) * 100)}%`;
+    labelRow.appendChild(labelText);
+    legend.appendChild(labelRow);
+  });
+
+  container.appendChild(legend);
 }
+
+
+
 
 function renderAnalyticsCharts() {
   const revenuePoints = state.analytics.slice(0, 5).map((item) => ({ label: item.vendorId, value: item.totalRevenue }));
@@ -27,10 +94,11 @@ function renderAnalyticsCharts() {
     .slice(0, 5)
     .map((product) => ({ label: product.sku, value: 30 - product.stock }));
 
-  createChart('revenue-chart', revenuePoints.length ? revenuePoints : [{ label: 'None', value: 1 }], 'Revenue by Vendor');
-  createChart('segmentation-chart', cohortPoints.length ? cohortPoints : [{ label: 'None', value: 1 }], 'Customer Cohorts');
-  createChart('forecast-chart', forecastPoints.length ? forecastPoints : [{ label: 'None', value: 1 }], 'Low Stock Forecast');
+  createPieChart('revenue-chart', revenuePoints.length ? revenuePoints : [{ label: 'None', value: 1 }], 'Revenue by Vendor');
+  createPieChart('segmentation-chart', cohortPoints.length ? cohortPoints : [{ label: 'None', value: 1 }], 'Customer Cohorts');
+  createPieChart('forecast-chart', forecastPoints.length ? forecastPoints : [{ label: 'None', value: 1 }], 'Low Stock Forecast');
 }
+
 
 window.analyticsUI = {
   renderAnalyticsCharts

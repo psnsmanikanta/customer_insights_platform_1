@@ -28,10 +28,17 @@ const transactions = Array.isArray(dataContext.INITIAL_TRANSACTIONS) ? dataConte
 const customers = Array.isArray(dataContext.INITIAL_CUSTOMERS) ? dataContext.INITIAL_CUSTOMERS : [];
 const products = Array.isArray(dataContext.INITIAL_PRODUCTS) ? dataContext.INITIAL_PRODUCTS : [];
 
+function isCompletedTransaction(transaction) {
+  return String(transaction.status || "completed").toLowerCase() !== "cancelled";
+}
+
+function completedTransactions(records = transactions) {
+  return records.filter(isCompletedTransaction);
+}
 
 function aggregateRevenueAnalytics() {
   return vendors.map((vendor) => {
-    const vendorTransactions = transactions.filter((txn) => txn.vendorId === vendor.id);
+    const vendorTransactions = completedTransactions(transactions.filter((txn) => txn.vendorId === vendor.id));
     return {
       vendorId: vendor.id,
       totalRevenue: vendorTransactions.reduce((sum, txn) => sum + Number(txn.totalAmount || 0), 0),
@@ -68,7 +75,7 @@ function buildCustomerBehaviorAnalytics() {
     };
   });
 
-  const salesByProduct = transactions.reduce((totals, transaction) => {
+  const salesByProduct = completedTransactions().reduce((totals, transaction) => {
     totals[transaction.productId] = (totals[transaction.productId] || 0) + Number(transaction.quantity || 0);
     return totals;
   }, {});
@@ -245,6 +252,8 @@ async function handleApi(request, response, url) {
   if (request.method === "OPTIONS") return sendJson(response, 204, {});
 
   const vendorMatch = url.pathname.match(/^\/api\/vendors\/([^/]+)$/);
+  const customerDashboardMatch = url.pathname.match(/^\/api\/customers\/([^/]+)\/dashboard$/);
+  const vendorDashboardMatch = url.pathname.match(/^\/api\/vendors\/([^/]+)\/dashboard$/);
   const actionMatch = url.pathname.match(/^\/api\/vendors\/([^/]+)\/(verify|approve|suspend|profile)$/);
 
   try {
@@ -260,6 +269,91 @@ async function handleApi(request, response, url) {
       return sendJson(response, 200, aggregateRevenueAnalytics());
     }
 
+    if (request.method === "GET" && url.pathname === "/api/admin/dashboard") {
+      const totalRevenue = completedTransactions().reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0);
+      const vendorRevenue = vendors.map((vendor) => {
+        const vendorTransactions = completedTransactions(transactions.filter((transaction) => transaction.vendorId === vendor.id));
+        const revenue = vendorTransactions.reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0);
+        return {
+          id: vendor.id,
+          name: vendor.businessName,
+          categories: vendor.categories || [],
+          status: getStatus(vendor),
+          revenue,
+          commission: revenue * Number(vendor.commission ?? vendor.commissionStructure?.rate ?? 10) / 100
+        };
+      }).sort((a, b) => b.revenue - a.revenue);
+      const lowStockProducts = products
+        .filter((product) => Number(product.stock || 0) < 20)
+        .sort((a, b) => Number(a.stock || 0) - Number(b.stock || 0))
+        .map((product) => ({
+          ...product,
+          vendorName: vendors.find((vendor) => vendor.id === product.vendorId)?.businessName || product.vendorId,
+          stockStatus: Number(product.stock || 0) === 0 ? "Out of stock" : "Low stock"
+        }));
+      const pendingVendors = vendors
+        .filter((vendor) => ["pending", "approved"].includes(getStatus(vendor)))
+        .map((vendor) => toRecord(vendor));
+
+      return sendJson(response, 200, {
+        summary: {
+          totalRevenue,
+          totalOrders: transactions.length,
+          totalProducts: products.length,
+          totalVendors: vendors.length,
+          activeVendors: vendors.filter((vendor) => getStatus(vendor) === "active").length,
+          lowStockCount: lowStockProducts.length,
+          pendingVendorCount: pendingVendors.length
+        },
+        pendingVendors,
+        lowStockProducts,
+        vendorRevenue
+      });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/admin/categories") {
+      const categories = Object.values(products.reduce((result, product) => {
+        const category = product.category || "Uncategorised";
+        if (!result[category]) result[category] = { category, productCount: 0, availableUnits: 0, lowStockCount: 0 };
+        result[category].productCount += 1;
+        result[category].availableUnits += Number(product.stock || 0);
+        if (Number(product.stock || 0) < 20) result[category].lowStockCount += 1;
+        return result;
+      }, {})).sort((left, right) => left.category.localeCompare(right.category));
+      return sendJson(response, 200, categories);
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/admin/benchmark") {
+      const productById = new Map(products.map((product) => [product.id, product]));
+      const totalRevenue = completedTransactions().reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0);
+      const vendorRankings = vendors.map((vendor) => {
+        const vendorTransactions = completedTransactions(transactions.filter((transaction) => transaction.vendorId === vendor.id));
+        return {
+          id: vendor.id,
+          name: vendor.businessName,
+          revenue: vendorTransactions.reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0),
+          orderCount: vendorTransactions.length
+        };
+      }).filter((vendor) => vendor.revenue > 0).sort((left, right) => right.revenue - left.revenue).map((vendor, index) => ({ ...vendor, rank: index + 1 }));
+      const categoryPerformance = Object.values(completedTransactions().reduce((result, transaction) => {
+        const category = productById.get(transaction.productId)?.category || "Uncategorised";
+        if (!result[category]) result[category] = { category, revenue: 0, unitsSold: 0 };
+        result[category].revenue += Number(transaction.totalAmount || 0);
+        result[category].unitsSold += Number(transaction.quantity || 0);
+        return result;
+      }, {})).sort((left, right) => right.revenue - left.revenue);
+      return sendJson(response, 200, {
+        totalRevenue,
+        totalVendorCount: vendors.length,
+        activeVendorCount: vendors.filter((vendor) => getStatus(vendor) === "active").length,
+        sellingVendorCount: vendorRankings.length,
+        averageVendorRevenue: vendorRankings.length ? totalRevenue / vendorRankings.length : 0,
+        leader: vendorRankings[0] || null,
+        vendorRankings,
+        categoryPerformance
+      });
+    }
+
     if (request.method === "GET" && url.pathname === "/api/analytics/customer-behavior") {
       return sendJson(response, 200, buildCustomerBehaviorAnalytics());
     }
@@ -268,8 +362,195 @@ async function handleApi(request, response, url) {
       return sendJson(response, 200, customers);
     }
 
+    if (request.method === "GET" && customerDashboardMatch) {
+      const customer = customers.find((item) => item.id === customerDashboardMatch[1]);
+      if (!customer) return sendJson(response, 404, { error: "Customer not found" });
+      const salesByProduct = completedTransactions().reduce((totals, transaction) => {
+        totals[transaction.productId] = (totals[transaction.productId] || 0) + Number(transaction.quantity || 0);
+        return totals;
+      }, {});
+      const recommendations = products
+        .filter((product) => product.status === "active" && Number(product.stock || 0) > 0)
+        .map((product) => ({ ...product, unitsSold: salesByProduct[product.id] || 0, recommendationReason: salesByProduct[product.id] ? "Popular with ShopSense customers" : "New in-stock product to discover" }))
+        .sort((left, right) => right.unitsSold - left.unitsSold || right.stock - left.stock)
+        .slice(0, 6);
+      return sendJson(response, 200, { customer, recommendations });
+    }
+
     if (request.method === "GET" && url.pathname === "/api/transactions") {
       return sendJson(response, 200, transactions);
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/products") {
+      return sendJson(response, 200, products);
+    }
+
+    if (request.method === "GET" && vendorDashboardMatch) {
+      const vendor = findVendor(vendorDashboardMatch[1]);
+      if (!vendor) return sendJson(response, 404, { error: "Vendor not found" });
+
+      const vendorProducts = products.filter((product) => product.vendorId === vendor.id);
+      const vendorTransactions = transactions.filter((transaction) => transaction.vendorId === vendor.id);
+      const completedVendorTransactions = completedTransactions(vendorTransactions);
+      const revenue = completedVendorTransactions.reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0);
+      const unitsSold = completedVendorTransactions.reduce((sum, transaction) => sum + Number(transaction.quantity || 0), 0);
+      const categoryBreakdown = vendorProducts.reduce((breakdown, product) => {
+        breakdown[product.category || "Uncategorised"] = (breakdown[product.category || "Uncategorised"] || 0) + 1;
+        return breakdown;
+      }, {});
+      const stockBreakdown = vendorProducts.reduce((breakdown, product) => {
+        const bucket = Number(product.stock || 0) === 0 ? "Out of stock" : Number(product.stock || 0) < 20 ? "Low stock" : "In stock";
+        breakdown[bucket] = (breakdown[bucket] || 0) + 1;
+        return breakdown;
+      }, {});
+      const productMap = new Map(products.map((product) => [product.id, product]));
+      const recentTransactions = [...vendorTransactions]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 6)
+        .map((transaction) => ({
+          ...transaction,
+          productName: productMap.get(transaction.productId)?.name || transaction.productId
+        }));
+      const topProducts = Object.values(completedVendorTransactions.reduce((result, transaction) => {
+        const product = productMap.get(transaction.productId);
+        const key = transaction.productId;
+        if (!result[key]) result[key] = { id: key, name: product?.name || key, unitsSold: 0, revenue: 0 };
+        result[key].unitsSold += Number(transaction.quantity || 0);
+        result[key].revenue += Number(transaction.totalAmount || 0);
+        return result;
+      }, {})).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+      const inventoryAlerts = vendorProducts
+        .filter((product) => Number(product.stock || 0) < 20)
+        .sort((a, b) => Number(a.stock || 0) - Number(b.stock || 0))
+        .map((product) => ({ id: product.id, name: product.name, stock: Number(product.stock || 0), status: Number(product.stock || 0) === 0 ? "Out of stock" : "Low stock" }));
+      const marketplaceRevenue = completedTransactions().reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0);
+      const vendorsWithSales = vendors.filter((item) => completedTransactions().some((transaction) => transaction.vendorId === item.id));
+      const revenueStandings = vendorsWithSales.map((item) => ({
+        id: item.id,
+        name: item.businessName,
+        revenue: completedTransactions(transactions.filter((transaction) => transaction.vendorId === item.id)).reduce((sum, transaction) => sum + Number(transaction.totalAmount || 0), 0)
+      })).sort((a, b) => b.revenue - a.revenue);
+      const rank = revenueStandings.findIndex((item) => item.id === vendor.id) + 1;
+      const marketplaceOrderValue = completedTransactions().length ? marketplaceRevenue / completedTransactions().length : 0;
+      const revenueByDate = Object.values(completedVendorTransactions.reduce((result, transaction) => {
+        const date = String(transaction.date || "").slice(0, 10);
+        if (!result[date]) result[date] = { date, revenue: 0, orders: 0 };
+        result[date].revenue += Number(transaction.totalAmount || 0);
+        result[date].orders += 1;
+        return result;
+      }, {})).sort((left, right) => left.date.localeCompare(right.date)).slice(-6);
+
+      return sendJson(response, 200, {
+        vendor: toRecord(vendor),
+        summary: {
+          totalProducts: vendorProducts.length,
+          inventoryRecords: vendorProducts.length,
+          inventoryUnits: vendorProducts.reduce((sum, product) => sum + Number(product.stock || 0), 0),
+          transactionCount: vendorTransactions.length,
+          revenue,
+          unitsSold,
+          commission: revenue * Number(vendor.commission ?? vendor.commissionStructure?.rate ?? 10) / 100,
+          lowStockProducts: vendorProducts.filter((product) => Number(product.stock || 0) > 0 && Number(product.stock || 0) < 20).length,
+          outOfStockProducts: vendorProducts.filter((product) => Number(product.stock || 0) === 0).length
+        },
+        categoryBreakdown,
+        stockBreakdown,
+        recentTransactions,
+        topProducts,
+        inventoryAlerts,
+        salesAnalytics: {
+          completedOrders: completedVendorTransactions.length,
+          cancelledOrders: vendorTransactions.filter((transaction) => String(transaction.status || "").toLowerCase() === "cancelled").length,
+          averageOrderValue: completedVendorTransactions.length ? revenue / completedVendorTransactions.length : 0,
+          revenueByDate
+        },
+        benchmark: {
+          marketplaceRevenue,
+          activeSellers: vendors.filter((item) => getStatus(item) === "active").length,
+          averageVendorRevenue: vendorsWithSales.length ? marketplaceRevenue / vendorsWithSales.length : 0,
+          vendorRevenueRank: rank || null,
+          rankedVendors: revenueStandings.length,
+          vendorAverageOrderValue: vendorTransactions.length ? revenue / vendorTransactions.length : 0,
+          marketplaceAverageOrderValue: marketplaceOrderValue,
+          revenueVsAveragePercent: vendorsWithSales.length ? ((revenue / (marketplaceRevenue / vendorsWithSales.length)) - 1) * 100 : 0,
+          leader: revenueStandings[0] || null,
+          revenueDistribution: revenueStandings.map((item) => ({
+            label: item.id === vendor.id ? `${item.name} (You)` : item.name,
+            value: item.revenue
+          }))
+        }
+      });
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/products") {
+      const body = await readBody(request);
+      const newProduct = {
+        id: `PROD-${Math.floor(100 + Math.random() * 900)}`,
+        vendorId: body.vendorId,
+        name: body.name,
+        category: body.category,
+        price: Number(body.price),
+        sku: body.sku,
+        stock: Number(body.stock),
+        status: body.status || "active",
+        imageUrl: body.imageUrl || ""
+      };
+      products.push(newProduct);
+      return sendJson(response, 201, newProduct);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/transactions") {
+      const body = await readBody(request);
+      const newTransaction = {
+        transactionId: `TRN-${Math.floor(1000 + Math.random() * 9000)}`,
+        vendorId: body.vendorId,
+        productId: body.productId,
+        quantity: Number(body.quantity),
+        totalAmount: Number(body.totalAmount),
+        date: new Date().toISOString(),
+        status: body.status || "processing"
+      };
+      transactions.push(newTransaction);
+      return sendJson(response, 201, newTransaction);
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/orders") {
+      const body = await readBody(request);
+      const { customerId, productId, quantity, totalAmount } = body;
+
+      // Create a new transaction
+      const newTransaction = {
+        transactionId: `TRN-${Math.floor(1000 + Math.random() * 9000)}`,
+        customerId,
+        vendorId: products.find(p => p.id === productId)?.vendorId || "UNKNOWN", // Assuming product exists
+        productId: productId,
+        quantity: Number(quantity),
+        totalAmount: Number(totalAmount),
+        date: new Date().toISOString(),
+        status: "processing"
+      };
+      transactions.push(newTransaction);
+
+      // Update customer's order count and lifetime value
+      const customerIndex = customers.findIndex(cust => cust.id === customerId);
+      if (customerIndex !== -1) {
+        customers[customerIndex].orderCount = (customers[customerIndex].orderCount || 0) + 1;
+        customers[customerIndex].lifetimeValue = (customers[customerIndex].lifetimeValue || 0) + Number(totalAmount);
+        customers[customerIndex].lastPurchaseDate = new Date().toISOString();
+      } else {
+        // If customer not found, create a new one (basic implementation)
+        const newCustomer = {
+          id: customerId,
+          name: `Customer ${customerId}`, // Placeholder name
+          firstPurchaseDate: new Date().toISOString(),
+          lastPurchaseDate: new Date().toISOString(),
+          lifetimeValue: Number(totalAmount),
+          orderCount: 1
+        };
+        customers.push(newCustomer);
+      }
+
+      return sendJson(response, 201, { transaction: newTransaction, customer: customers.find(cust => cust.id === customerId) });
     }
 
 
